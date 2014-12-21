@@ -46,7 +46,6 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function MVCTdose_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
@@ -77,7 +76,7 @@ clear path;
 handles.versionInfo = LoadVersionInfo;
 
 % Store program and MATLAB/etc version information as a string cell array
-string = {'TomoTherapy Exit Detector IMRT QA Analysis'
+string = {'TomoTherapy MVCT Dose Calculator'
     sprintf('Version: %s (%s)', handles.version, handles.versionInfo{6});
     sprintf('Author: Mark Geurts <mark.w.geurts@gmail.com>');
     sprintf('MATLAB Version: %s', handles.versionInfo{2});
@@ -153,68 +152,6 @@ Event(['Default file path set to ', handles.path]);
 handles.image = [];
 handles.structures = [];
 
-%% Initialize UI and declare global variables
-% Set version UI text
-set(handles.version_text, 'String', sprintf('Version %s', handles.version));
-
-% Declare slice selection list variable and set menu
-handles.slices = {'Manual slice selection'};
-set(handles.slice_menu, 'String', handles.slices);
-
-% Disable slice selection axes
-set(allchild(handles.slice_axes), 'visible', 'off'); 
-set(handles.slice_axes, 'visible', 'off');
-
-% Initialize IVDT table with empty data
-set(handles.ivdt_table, 'Data', cell(10, 2));
-
-% Set beam model menu
-set(handles.beam_menu, 'String', handles.beammodels);
-
-% If only one beam model exists, set and auto-populate results
-if length(handles.beammodels) == 2
-    set(handles.beam_menu, 'Value', 2);
-else
-    set(handles.beam_menu, 'Value', 1);
-end
-
-% Set beam parameters
-beam_menu_Callback(handles.beam_menu, '', handles);
-
-% Declare pitch options. An equal array of pitch values must also exist, 
-% defined next. The options represent the menu options, the values are 
-% couch rates in cm/rot  
-handles.pitchoptions = {
-    'Fine'
-    'Normal'
-    'Coarse'
-};
-handles.pitchvalues = [
-    0.4
-    0.8
-    1.2
-];
-Event(['Pitch options set to: ', strjoin(handles.pitchoptions, ', ')]);
-
-% Declare default period
-handles.defaultperiod = 10;
-Event('Default period set to %0.1f sec', handles.defaultperiod);
-
-% Set pitch menu options
-set(handles.pitch_menu, 'String', vertcat('Select', handles.pitchoptions));
-
-% Default MLC sinogram to all open
-set(handles.mlc_radio_a, 'Value', 1);
-    
-% Set the initial image view orientation to Transverse (T)
-handles.tcsview = 'T';
-Event('Default dose view set to Transverse');
-
-% Set the default transparency
-set(handles.alpha, 'String', '20%');
-Event(['Default dose view transparency set to ', ...
-    get(handles.alpha, 'String')]);
-
 %% Configure Dose Calculation
 % Start with the handles.calcDose flag set to 1 (dose calculation enabled)
 handles.calcDose = 1;
@@ -275,8 +212,67 @@ end
 % Clear temporary variables
 clear cmdout;
 
-% Disable dose calc button
-handles = checkCalculateInputs(handles);
+%% Initialize UI and declare global variables
+% Set version UI text
+set(handles.version_text, 'String', sprintf('Version %s', handles.version));
+
+% Declare slice selection list variable and set menu
+handles.slices = {'Manual slice selection'};
+set(handles.slice_menu, 'String', handles.slices);
+
+% Disable slice selection axes
+set(allchild(handles.slice_axes), 'visible', 'off'); 
+set(handles.slice_axes, 'visible', 'off');
+
+% Initialize IVDT table with empty data
+set(handles.ivdt_table, 'Data', cell(12, 2));
+
+% Set beam model menu
+set(handles.beam_menu, 'String', handles.beammodels);
+
+% If only one beam model exists, set and auto-populate results
+if length(handles.beammodels) == 2
+    set(handles.beam_menu, 'Value', 2);
+else
+    set(handles.beam_menu, 'Value', 1);
+end
+
+% Set beam parameters (will also disable calc button)
+beam_menu_Callback(handles.beam_menu, '', handles);
+
+% Declare pitch options. An equal array of pitch values must also exist, 
+% defined next. The options represent the menu options, the values are 
+% couch rates in cm/rot  
+handles.pitchoptions = {
+    'Fine'
+    'Normal'
+    'Coarse'
+};
+handles.pitchvalues = [
+    0.4
+    0.8
+    1.2
+];
+Event(['Pitch options set to: ', strjoin(handles.pitchoptions, ', ')]);
+
+% Declare default period
+handles.defaultperiod = 10;
+Event(sprintf('Default period set to %0.1f sec', handles.defaultperiod));
+
+% Set pitch menu options
+set(handles.pitch_menu, 'String', vertcat('Select', handles.pitchoptions));
+
+% Default MLC sinogram to all open
+set(handles.mlc_radio_a, 'Value', 1);
+    
+% Set the initial image view orientation to Transverse (T)
+handles.tcsview = 'T';
+Event('Default dose view set to Transverse');
+
+% Set the default transparency
+set(handles.alpha, 'String', '20%');
+Event(['Default dose view transparency set to ', ...
+    get(handles.alpha, 'String')]);
 
 % Clear results
 handles = clearResults(handles);
@@ -385,6 +381,12 @@ if iscell(name) || sum(name ~= 0)
 else
     Event('No files were selected');
 end
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function struct_file_Callback(~, ~, ~)
@@ -626,6 +628,9 @@ if get(hObject, 'Value') > 1
     
 end
 
+% Verify new data
+handles = checkCalculateInputs(handles);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -643,10 +648,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function beamoutput_Callback(~, ~, ~)
+function beamoutput_Callback(~, ~, handles)
 % hObject    handle to beamoutput (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function beamoutput_CreateFcn(hObject, ~, ~)
@@ -662,10 +673,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function jaw_text_Callback(~, ~, ~)
+function jaw_text_Callback(~, ~, handles)
 % hObject    handle to jaw (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function jaw_text_CreateFcn(hObject, ~, ~)
@@ -681,10 +698,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function period_Callback(~, ~, ~)
+function period_Callback(~, ~, handles)
 % hObject    handle to period (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function period_CreateFcn(hObject, ~, ~)
@@ -700,10 +723,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function pitch_Callback(~, ~, ~)
+function pitch_Callback(~, ~, handles)
 % hObject    handle to pitch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function pitch_CreateFcn(hObject, ~, ~)
@@ -736,6 +765,12 @@ if get(hObject, 'Value') > 1
     set(handles.pitch, 'String', sprintf('%0.1f', ...
         handles.pitchvalues(get(hObject, 'Value') - 1)));
 end
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function pitch_menu_CreateFcn(hObject, ~, ~)
@@ -771,6 +806,9 @@ set(handles.projection_rate, 'Enable', 'off');
 set(allchild(handles.sino_axes), 'visible', 'off'); 
 set(handles.sino_axes, 'visible', 'off');
 
+% Verify new data
+handles = checkCalculateInputs(handles);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -799,6 +837,9 @@ if isfield(handles, 'sinogram') && ~isempty(handles.sinogram)
     set(handles.sino_axes, 'visible', 'on');
 end
     
+% Verify new data
+handles = checkCalculateInputs(handles);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -822,16 +863,72 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function sino_browse_Callback(~, ~, handles)
+function sino_browse_Callback(hObject, ~, handles)
 % hObject    handle to sino_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Log event
+Event('Sinogram browse button selected');
+
+% Request the user to select the sinogram file
+Event('UI window opened to select file');
+[name, path] = uigetfile('*.*', 'Select a sinogram binary file', ...
+    handles.path);
+
+% If the user selected a file
+if ~isequal(name, 0)
+    
+    % Clear existing sinogram data
+    handles.sinogram = [];
+    
+    % Update default path
+    handles.path = path;
+    Event(['Default file path updated to ', path]);
+    
+    % Update sino_file text box
+    set(handles.sino_file, 'String', fullfile(path, name));
+    
+    % Extract file contents
+    handles.sinogram = LoadSinogram(path, name); 
+    
+    % Log plot
+    Event('Plotting sinogram');
+    
+    % Plot sinogram
+    axes(handles.sino_axes);
+    imagesc(handles.sinogram');
+    colorbar;
+    
+    % Enable sinogram axes
+    set(allchild(handles.sino_axes), 'visible', 'on'); 
+    set(handles.sino_axes, 'visible', 'on');
+
+else
+    % Log event
+    Event('No file was selected');
+end
+
+% Clear temporary variables
+clear name path ax;
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function projection_rate_Callback(~, ~, ~)
+function projection_rate_Callback(~, ~, handles)
 % hObject    handle to projection_rate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function projection_rate_CreateFcn(hObject, ~, ~)
@@ -977,7 +1074,6 @@ if get(hObject, 'Value') > 1
     % Set field size value
     set(handles.jaw, 'String', sprintf('%0.2g', ...
         sum(abs(handles.fieldsizes(get(hObject, 'Value') - 1, :)))));
-    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -994,10 +1090,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function jaw_Callback(~, ~, ~)
+function jaw_Callback(~, ~, handles)
 % hObject    handle to jaw (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function jaw_CreateFcn(hObject, ~, ~)
@@ -1071,6 +1173,12 @@ function ivdt_table_CellEditCallback(hObject, eventdata, handles)
 %	Error: error string when failed to convert EditData to appropriate 
 %       value for Data
 % handles    structure with handles and user data (see GUIDATA)
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function handles = checkCalculateInputs(handles)
