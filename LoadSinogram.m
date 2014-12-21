@@ -6,8 +6,8 @@ function sinogram = LoadSinogram(path, name)
 % or little.
 %
 % The following variables are required for proper execution: 
-%   path: path to the sinogram file
-%   name: name of the binary sinogram in path
+%   path: string containing the path to the sinogram file
+%   name: string containing the name of the binary sinogram in path
 %
 % The following variables are returned upon succesful completion:
 %   sinogram: 64 x n array of leaf open fractions. If unsuccessful, an

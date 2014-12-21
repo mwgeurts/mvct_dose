@@ -314,7 +314,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function image_browse_Callback(~, ~, handles)
+function image_browse_Callback(hObject, ~, handles)
 % hObject    handle to image_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -339,12 +339,12 @@ if iscell(name) || sum(name ~= 0)
     if ~iscell(name)
         
         % Update text box with file name
-        set(handles.image_text, 'String', fullfile(path, name));
+        set(handles.image_file, 'String', fullfile(path, name));
         names{1} = name;
         
     else
         % Update text box with first file
-        set(handles.image_text, 'String', 'Multiple files selected');
+        set(handles.image_file, 'String', path);
         names = name;
     end
     
@@ -361,11 +361,35 @@ if iscell(name) || sum(name ~= 0)
         set(handles.text6, 'Enable', 'on');     
         set(handles.struct_file, 'Enable', 'on');        
         set(handles.struct_browse, 'Enable', 'on');
+        
+        % If current structure set FOR UID does not match image
+        if isfield(handles, 'structures') && ~isempty(handles.structures)
+            if ~strcmp(handles.structures{1}.frameRefUID, ...
+                    handles.image.frameRefUID)
+                
+                % Log event
+                Event(['Existing structure data cleared as it no longer ', ...
+                    'matches loaded image set'], 'WARN');
+                
+                % Clear structures
+                handles.structures = [];
+                
+                % Clear structures file
+                set(handles.struct_file, 'String', ''); 
+            end
+        end
     else
         
         % Load image, structure set, and IVDT from patient archive
         [handles.image, handles.structures, handles.ivdt] = ...
             LoadArchiveImages(path, names{1});
+        
+        % Set IVDT table
+        set(handles.ivdt_table, 'Data', handles.ivdt);
+        
+        % Initialize DVH table
+        set(handles.dvh_table, 'Data', ...
+            InitializeStatistics(handles.structures));
         
         % Clear and disable structure set browse
         set(handles.text6, 'Enable', 'off');  
@@ -374,8 +398,82 @@ if iscell(name) || sum(name ~= 0)
         set(handles.struct_browse, 'Enable', 'off');
     end
     
+    % Set slice to center of dataset
+    slice = floor(handles.image.dimensions(1)/2);
+    
+    % Extract sagittal slice through center of image
+    imageA = squeeze(handles.image.data(slice, :, :));
+    
+    % Set image widths
+    width = [handles.image.width(2) handles.image.width(3)];
+    
+    % Set image start values
+    start = [handles.image.start(2) handles.image.start(3)];
+    
+    % Plot sagittal plane in slice selector
+    axes(handles.slice_axes);
+    
+    % Create reference object based on the start and width inputs
+    reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
+        width(1)], [start(2) start(2) + size(imageA,1) * width(2)]);
+    
+    % Cast the imageA data as 16-bit unsigned integer
+    imageA = int16(imageA);
+    
+    % Display the reference image in HU (subtracting 1024), using a
+    % gray colormap with the range set from -1024 to +1024
+    imshow(imageA - 1024, reference, 'DisplayRange', [-1024 1024], ...
+        'ColorMap', colormap('gray'));
+    
+    % Add image contours
+    if isfield(handles, 'structures') && ~isempty(handles.structures)
+        
+        % Hold the axes to allow overlapping contours
+        hold on;
+        
+        % Retrieve dvh data
+        stats = get(handles.dvh_table, 'Data');
+        
+        % Loop through each structure
+        for i = 1:length(handles.structures)
+            
+            % If the statistics display column for this structure is set to
+            % true (checked)
+            if stats{i, 2}
+                
+                % Use bwboundaries to generate X/Y contour points based
+                % on structure mask
+                B = bwboundaries(squeeze(...
+                    image1.structures{i}.mask(slice, :, :))');
+            
+                % Loop through each contour set (typically this is one)
+                for k = 1:length(B)
+                    % Plot the contour points given the structure color
+                    plot((B{k}(:,2) - 1) * image1.width(2) + ...
+                        image1.start(2), (B{k}(:,1) - 1) * ...
+                        image1.width(3) + image1.start(3), ...
+                       'Color', image1.structures{i}.color/255, ...
+                       'LineWidth', 2);
+                end
+            end
+        end
+    end
+    
+    % Unhold axes generation
+    hold off;
+
+    % Hide the x/y axis on the images
+    axis off;
+    
+    % Show the slice selection plot
+    set(handles.slice_axes, 'visible', 'on');
+
+    % Start the POI tool, which automatically diplays the x/y coordinates
+    % (based on imref2d above) and the current mouseover location
+    impixelinfo;
+
     % Clear temporary variable
-    clear s name names;
+    clear s i j k name names path sag width start reference slice B imageA;
     
 % Otherwise no file was selected
 else
@@ -898,6 +996,7 @@ if ~isequal(name, 0)
     % Plot sinogram
     axes(handles.sino_axes);
     imagesc(handles.sinogram');
+    colormap(handles.sino_axes, 'default');
     colorbar;
     
     % Enable sinogram axes
