@@ -127,7 +127,7 @@ image.start(3) = min(info.ImagePositionPatient(3)) / 10;
 
 % Retrieve x/y voxel widths from DICOM header, in cm
 image.width(1) = info.PixelSpacing(1) / 10;
-image.width(2) = info.PixelSpacing(2)  /10;
+image.width(2) = info.PixelSpacing(2) / 10;
 
 % If patient is Head First
 if info.ImageOrientationPatient(1) == 1
