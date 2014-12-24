@@ -398,6 +398,22 @@ if iscell(name) || sum(name ~= 0)
         set(handles.struct_browse, 'Enable', 'off');
     end
     
+    % Delete slice selector if one exists
+    if isfield(handles, 'selector')
+        
+        % Log deletion
+        Event('Deleting old slice selector');
+        
+        % Retrieve current handle
+        api = iptgetapi(handles.selector);
+        
+        % If a valid handle is returned, delete it
+        if ~isempty(api); api.delete(); end
+        
+        % Clear temporary variable
+        clear api;
+    end
+    
     % Set slice to center of dataset
     slice = floor(handles.image.dimensions(1)/2);
     
@@ -405,16 +421,16 @@ if iscell(name) || sum(name ~= 0)
     imageA = squeeze(handles.image.data(slice, :, :));
     
     % Set image widths
-    width = [handles.image.width(2) handles.image.width(3)];
+    width = [handles.image.width(3) handles.image.width(2)];
     
     % Set image start values
-    start = [handles.image.start(2) handles.image.start(3)];
+    start = [handles.image.start(3) handles.image.start(2)];
     
     % Plot sagittal plane in slice selector
     axes(handles.slice_axes);
     
     % Create reference object based on the start and width inputs
-    reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
+    reference = imref2d(size(imageA), [start(1) start(1) + size(imageA,2) * ...
         width(1)], [start(2) start(2) + size(imageA,1) * width(2)]);
     
     % Cast the imageA data as 16-bit unsigned integer
@@ -444,15 +460,16 @@ if iscell(name) || sum(name ~= 0)
                 % Use bwboundaries to generate X/Y contour points based
                 % on structure mask
                 B = bwboundaries(squeeze(...
-                    image1.structures{i}.mask(slice, :, :))');
+                    imageA.structures{i}.mask(slice, :, :))');
             
                 % Loop through each contour set (typically this is one)
                 for k = 1:length(B)
+                    
                     % Plot the contour points given the structure color
-                    plot((B{k}(:,2) - 1) * image1.width(2) + ...
-                        image1.start(2), (B{k}(:,1) - 1) * ...
-                        image1.width(3) + image1.start(3), ...
-                       'Color', image1.structures{i}.color/255, ...
+                    plot((B{k}(:,2) - 1) * imageA.width(2) + ...
+                        imageA.start(2), (B{k}(:,1) - 1) * ...
+                        imageA.width(3) + imageA.start(3), ...
+                       'Color', imageA.structures{i}.color/255, ...
                        'LineWidth', 2);
                 end
             end
@@ -462,18 +479,36 @@ if iscell(name) || sum(name ~= 0)
     % Unhold axes generation
     hold off;
 
-    % Hide the x/y axis on the images
-    axis off;
-    
     % Show the slice selection plot
     set(handles.slice_axes, 'visible', 'on');
 
+    % Hide the x/y axis on the images
+    axis off;
+    
     % Start the POI tool, which automatically diplays the x/y coordinates
     % (based on imref2d above) and the current mouseover location
     impixelinfo;
 
+    % Create interactive slice selector line to allow user to select slice 
+    % ranges, defaulting to all slices
+    handles.selector = imdistline(handles.slice_axes, ...
+        [start(1) start(1) + size(imageA, 2) * width(1)], ...
+        [0 0]);
+
+    % Constrain line to only resize horizontally, and only to the upper and
+    % lower extent of the image using drag constraint function
+    api = iptgetapi(handles.selector);
+    fcn = @(pos) [max(start(1), pos(1,1)) 0; ...
+        min(start(1) + size(imageA, 2) * width(1), pos(2,1)) 0];
+    api.setDragConstraintFcn(fcn);
+    
     % Clear temporary variable
-    clear s i j k name names path sag width start reference slice B imageA;
+    clear s i j k name names path sag width start reference slice B ...
+        imageA api;
+    
+    % Log completion of slice selection load
+    Event(['Slice selector initialized. Drag the endpoints of the slice', ...
+        'selector to adjust the MVCT scan length.']);
     
 % Otherwise no file was selected
 else
