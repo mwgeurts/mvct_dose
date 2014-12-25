@@ -143,15 +143,6 @@ Event(sprintf('%i beam models found', length(handles.beammodels) - 1));
 % Clear temporary variables
 clear dirs i;
 
-%% Declare global variables
-% Default folder path when selecting input files
-handles.path = userpath;
-Event(['Default file path set to ', handles.path]);
-
-% Initialize image variables
-handles.image = [];
-handles.structures = [];
-
 %% Configure Dose Calculation
 % Start with the handles.calcDose flag set to 1 (dose calculation enabled)
 handles.calcDose = 1;
@@ -212,7 +203,87 @@ end
 % Clear temporary variables
 clear cmdout;
 
+%% Load the default IVDT
+% Log start
+Event('Loading default IVDT');
+
+% Open read file handle to default ivdt file
+fid = fopen('./ivdt.txt', 'r');
+
+% If a valid file handle is returned
+if fid > 2
+    
+    % Retrieve first line
+    tline = fgetl(fid);
+    
+    % Match CT numbers
+    s = strsplit(tline, '=');
+    ctNums = textscan(s{2}, '%f');
+    
+    % Retrieve second line
+    tline = fgetl(fid);
+    
+    % Match density values
+    s = strsplit(tline, '=');
+    densVals = textscan(s{2}, '%f');
+    
+    % Verify CT numbers and values were found
+    if ~isempty(ctNums) && ~isempty(densVals)
+        
+        % Verify lengths match
+        if length(ctNums{1}) ~= length(densVals{1})
+            Event('Default IVDT vector length mismatch', 'ERROR');
+        
+        % Verify at least two elements exist
+        elseif length(ctNums{1}) < 2
+            Event('Default IVDT does not contain enough values', 'ERROR');
+            
+        % Verify the first CT number value is zero
+        elseif ctNums{1}(1) ~= 0
+            Event('Default IVDT first CT number must equal zero', 'ERROR');
+            
+        % Otherwise, set IVDT table
+        else
+            % Initialize ivdt temp cell array
+            ivdt = cell(length(ctNums{1}) + 1, 2);
+            
+            % Loop through elements, writing formatted values
+            for i = 1:length(ctNums{1})
+                
+                % Save formatted numbers
+                ivdt{i,1} = sprintf('%0.0f', ctNums{1}(i) - 1024);
+                ivdt{i,2} = sprintf('%g', densVals{1}(i));
+                
+            end
+            
+            % Set UI table contents
+            set(handles.ivdt_table, 'Data', ivdt);
+            
+            % Log completion
+            Event(sprintf(['Default IVDT loaded successfully with %i ', ...
+                'elements'], length(ctNums{1})));
+        end
+    else
+        % Otherwise, throw an error
+        Event('Default IVDT file is not formatted correctly', 'ERROR');
+    end
+    
+    % Close file handle
+    fclose(fid);
+    
+else
+    % Otherwise, throw error as default IVDT is missing
+    Event('Default IVDT file is missing', 'ERROR');
+end
+
+% Clear temporary variables
+clear fid tline s ctNums densVals ivdt i;
+
 %% Initialize UI and declare global variables
+% Default folder path when selecting input files
+handles.path = userpath;
+Event(['Default file path set to ', handles.path]);
+
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
@@ -223,9 +294,6 @@ set(handles.slice_menu, 'String', handles.slices);
 % Disable slice selection axes
 set(allchild(handles.slice_axes), 'visible', 'off'); 
 set(handles.slice_axes, 'visible', 'off');
-
-% Initialize IVDT table with empty data
-set(handles.ivdt_table, 'Data', cell(12, 2));
 
 % Set beam model menu
 set(handles.beam_menu, 'String', handles.beammodels);
@@ -381,11 +449,14 @@ if iscell(name) || sum(name ~= 0)
     else
         
         % Load image, structure set, and IVDT from patient archive
-        [handles.image, handles.structures, handles.ivdt] = ...
+        [handles.image, handles.structures, ivdt] = ...
             LoadArchiveImages(path, names{1});
         
         % Set IVDT table
-        set(handles.ivdt_table, 'Data', handles.ivdt);
+        set(handles.ivdt_table, 'Data', ivdt);
+        
+        % Clear temporary variables
+        clear ivdt;
         
         % Initialize DVH table
         set(handles.dvh_table, 'Data', ...
@@ -495,16 +566,18 @@ if iscell(name) || sum(name ~= 0)
         [start(1) start(1) + size(imageA, 2) * width(1)], ...
         [0 0]);
 
+    % Retrieve handle to slice selector API
+    api = iptgetapi(handles.selector);
+    
     % Constrain line to only resize horizontally, and only to the upper and
     % lower extent of the image using drag constraint function
-    api = iptgetapi(handles.selector);
     fcn = @(pos) [max(start(1), pos(1,1)) 0; ...
         min(start(1) + size(imageA, 2) * width(1), pos(2,1)) 0];
     api.setDragConstraintFcn(fcn);
     
     % Clear temporary variable
     clear s i j k name names path sag width start reference slice B ...
-        imageA api;
+        imageA fcn api;
     
     % Log completion of slice selection load
     Event(['Slice selector initialized. Drag the endpoints of the slice', ...
@@ -1308,11 +1381,75 @@ function ivdt_table_CellEditCallback(hObject, eventdata, handles)
 %       value for Data
 % handles    structure with handles and user data (see GUIDATA)
 
+% Retrieve current data array
+ivdt = get(hObject, 'Data');
+
+% Verify edited value is a number or empty
+if isnan(str2double(ivdt{eventdata.Indices(1), eventdata.Indices(2)})) && ...
+        ~isempty(ivdt{eventdata.Indices(1), eventdata.Indices(2)})
+    
+    % Warn user
+    Event(sprintf(['IVDT value "%s" is not a number, reverting to previous ', ...
+        'value'], ivdt{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
+    
+    % Revert value to previous
+    ivdt{eventdata.Indices(1), eventdata.Indices(2)} = ...
+        eventdata.PreviousData;
+
+% If an HU value was edited, round to nearest integer
+elseif eventdata.Indices(2) == 1 && round(str2double(ivdt{eventdata.Indices(1), ...
+        eventdata.Indices(2)})) ~= str2double(ivdt{eventdata.Indices(1), ...
+        eventdata.Indices(2)}) && ...
+        ~isempty(ivdt{eventdata.Indices(1), eventdata.Indices(2)})
+    
+    % Log round to nearest integer
+    Event(sprintf('HU value %s rounded to an integer', ...
+        ivdt{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
+    
+    % Store rounded value
+    ivdt{eventdata.Indices(1), eventdata.Indices(2)} = sprintf('%0.0f', ...
+        str2double(ivdt{eventdata.Indices(1), eventdata.Indices(2)}));
+
+% If a density value was edited, convert to number
+elseif eventdata.Indices(2) == 1 && ...
+        ~isempty(ivdt{eventdata.Indices(1), eventdata.Indices(2)})
+    
+    % Store number
+    ivdt{eventdata.Indices(1), eventdata.Indices(2)} = sprintf('%g', ...
+        str2double(ivdt{eventdata.Indices(1), eventdata.Indices(2)}));
+    
+end
+
+% If HU values were changed and results are not sorted
+if eventdata.Indices(2) == 1 && ~issorted(str2double(ivdt), 'rows')
+    
+    % Log event
+    Event('Resorting IVDT array');
+    
+    % Retrieve sort indices
+    [~,I] = sort(str2double(ivdt), 1, 'ascend');
+    
+    % Store sorted ivdt array
+    ivdt = ivdt(I(:,1),:);
+    
+end
+
+% If the edited cell was the last row, add a new empty row
+if size(ivdt,1) == eventdata.Indices(1)
+    ivdt{size(ivdt,1)+1, 1} = [];
+end
+
+% Set formatted/sorted IVDT data
+set(hObject, 'Data', ivdt);
+
 % Verify new data
 handles = checkCalculateInputs(handles);
 
 % Update handles structure
 guidata(hObject, handles);
+
+% Clear temporary variables
+clear ivdt I;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function handles = checkCalculateInputs(handles)
@@ -1341,6 +1478,30 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function handles = clearResults(handles)
 % clearResults clears all results and UI handles
+
+% Log action
+if isfield(handles, 'image')
+    Event('Clearing patient plan variables from memory');
+else
+    Event('Initializing patient plan variables');
+end
+
+% Clear data variables
+handles.image = [];
+handles.structures = [];
+
+% Clear and delete slice selector
+if isfield(handles, 'selector') 
+    
+    % Retrieve current handle
+    api = iptgetapi(handles.selector);
+
+    % If a valid handle is returned, delete it
+    if ~isempty(api); api.delete(); end
+
+    % Clear temporary variable
+    clear api;
+end
 
 % Disable dose and DVH axes
 set(allchild(handles.dose_axes), 'visible', 'off'); 
