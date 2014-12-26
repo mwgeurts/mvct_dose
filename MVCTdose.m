@@ -854,10 +854,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function beamoutput_Callback(~, ~, handles)
+function beamoutput_Callback(hObject, ~, handles)
 % hObject    handle to beamoutput (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Parse value to number
+set(hObject, 'String', sprintf('%g', str2double(get(hObject, 'String'))));
 
 % Verify new data
 handles = checkCalculateInputs(handles);
@@ -904,10 +907,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function period_Callback(~, ~, handles)
+function period_Callback(hObject, ~, handles)
 % hObject    handle to period (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Parse value to number
+set(hObject, 'String', sprintf('%g', str2double(get(hObject, 'String'))));
 
 % Verify new data
 handles = checkCalculateInputs(handles);
@@ -929,10 +935,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function pitch_Callback(~, ~, handles)
+function pitch_Callback(hObject, ~, handles)
 % hObject    handle to pitch (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Parse value to number
+set(hObject, 'String', sprintf('%g', str2double(get(hObject, 'String'))));
 
 % Verify new data
 handles = checkCalculateInputs(handles);
@@ -1126,10 +1135,13 @@ handles = checkCalculateInputs(handles);
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function projection_rate_Callback(~, ~, handles)
+function projection_rate_Callback(hObject, ~, handles)
 % hObject    handle to projection_rate (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Parse value to number
+set(hObject, 'String', sprintf('%g', str2double(get(hObject, 'String'))));
 
 % Verify new data
 handles = checkCalculateInputs(handles);
@@ -1297,10 +1309,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function jaw_Callback(~, ~, handles)
+function jaw_Callback(hObject, ~, handles)
 % hObject    handle to jaw (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Parse value to number
+set(hObject, 'String', sprintf('%g', str2double(get(hObject, 'String'))));
 
 % Verify new data
 handles = checkCalculateInputs(handles);
