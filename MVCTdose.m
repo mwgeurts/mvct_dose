@@ -1456,24 +1456,187 @@ function handles = checkCalculateInputs(handles)
 % checkCalculateInputs checks to see if all dose calculation inputs have
 % been set, and if so, enables the "Calculate Dose" button
 
-% Initialize disable flag
+% Initialize disable flag and reason string
 disable = false;
+reason = '';
 
+%% Verify data variables are set
+% Verify CT data exists
+if ~isfield(handles, 'image') || ~isfield(handles.image, 'data') || ...
+        length(size(handles.image.data)) ~= 3
+    
+    reason = 'image data does not exist';
+    disable = true;
+    
+% Verify slice selector exists
+elseif ~isfield(handles, 'selector')
+    
+    reason = 'no slice selector found';
+    disable = true;
+    
+% Verify IVDT table data exists
+elseif size(get(handles.ivdt_table, 'Data'), 1) < 2
+    
+    reason = 'no IVDT data exists';
+    disable = true;
+    
+% Verify beam output exists and is greater than 0
+elseif isnan(str2double(handles.beamoutput, 'String')) || ...
+        str2double(handles.beamoutput, 'String') <= 0
+    
+    reason = 'beam output is not valid';
+    disable = true;
+
+% Verify gantry period exists and is greater than 0
+elseif isnan(str2double(handles.period, 'String')) || ...
+        str2double(handles.period, 'String') <= 0
+    
+    reason = 'gantry period is not valid';
+    disable = true;
+
+% Verify field width exists and is greater than 0
+elseif isnan(str2double(handles.jaw, 'String')) || ...
+        str2double(handles.jaw, 'String') <= 0
+    
+    reason = 'field width is not valid';
+    disable = true;
+    
+% Verify pitch exists and is greater than 0
+elseif isnan(str2double(handles.pitch, 'String')) || ...
+        str2double(handles.pitch, 'String') <= 0
+    
+    reason = 'pitch is not valid';
+    disable = true;
+end
+
+%% Verify IVDT values
+% Convert IVDT values to numbers
+ivdt = str2double(get(handles.ivdt_table, 'Data'));
+
+% Verify first HU value is -1024
+if ivdt(1,1) ~= -1024
+    
+    reason = 'the first IVDT entry must define density at -1024';
+    disable = true;
+   
+% Verify the HU values are sorted
+elseif ~issorted(ivdt(:, 1))
+    
+    reason = 'the IVDT HU values must be in ascending order';
+    disable = true;
+
+% Verify the density values are sorted
+elseif ~issorted(ivdt(:, 2))
+    
+    reason = 'the IVDT density values must be in ascending order';
+    disable = true;
+    
+% Verify at least two HU values exist
+elseif length(ivdt(:, 1)) - sum(isnan(ivdt(:, 1))) <= 2
+    
+    reason = 'the IVDT must contain at least two values';
+    disable = true;
+    
+% Verify the number of non-zero HU and density values are equal
+elseif length(ivdt(:, 1)) - sum(isnan(ivdt(:, 1))) ~= ...
+        length(ivdt(:, 2)) - sum(isnan(ivdt(:, 2)))
+    
+    reason = 'the number of IVDT HU and density values must be equal';
+    disable = true;
+end
+
+%% Verify slice selection values
+if ~disable && isfield(handles, 'selector') 
+    
+    % Retrieve current handle
+    api = iptgetapi(handles.selector);
+
+    % If a valid handle is not returned
+    if isempty(api)
+        
+        % Disable calculation
+        reason = 'no slice selector found';
+        disable = true; 
+
+    % Otherwise, a valid handle is returned
+    else
+        
+        % Retrieve current values
+        pos = api.getPosition();
+        
+        % If current values are not within slice boundaries
+        if pos(1,1) < handles.image.start(3) || pos(2,1) > ...
+                handles.image.start(3) + size(handles.image.data, 3) * ...
+                handles.image.width(3)
+            
+            % Disable calculation
+            reason = 'slice selector is not within image boundaries';
+            disable = true;
+            
+        end
+    end
+end
+
+%% Verify custom MLC values
+% If a custom sinogram is selected
+if get(handles.mlc_radio_b, 'Value') == 1
+    
+    % Verify sinogram data exists
+    if ~isfield(handles, 'sinogram') || size(handles.sinogram, 1) == 0
+        
+        reason = 'custom sinogram is not loaded';
+        disable = true;
+    
+    % Verify a projection rate exists and is greater than 0
+    elseif isnan(str2double(handles.projection_rate, 'String')) || ...
+            str2double(handles.projection_rate, 'String') <= 0
+        
+        reason = 'projection rate is not valid';
+        disable = true;
+    
+    end
+end
+
+%% Finish verification
 % If calcDose is set to 0, the calc server does not exist
-if handles.calcDose == 0; disable = true; end
+if handles.calcDose == 0
+    
+    reason = 'no dose calculator was found';
+    disable = true;
+
+end
 
 % If disable flag is still set
 if disable
+    
+    % If previous state was enabled
+    if strcmp(get(handles.calc_button, 'Enable'), 'on')
+        
+        % Log reason for changing status
+        Event(['Dose calculation is disabled: ', reason], 'WARN');
+        
+    end
     
     % Disable calc button
     set(handles.calc_button, 'Enable', 'off');
     
 else
+
+    % If previous state was disabled
+    if strcmp(get(handles.calc_button, 'Enable'), 'off')
+        
+        % Log reason for changing status
+        Event('Dose calculation inputs passed validation checks');
+        
+    end
     
     % Enable calc button
     set(handles.calc_button, 'Enable', 'on');
     
 end
+
+% Clear temporary variables
+clear reason pos ivdt;
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function handles = clearResults(handles)
