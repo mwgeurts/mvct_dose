@@ -25,7 +25,7 @@ function varargout = MVCTdose(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 19-Dec-2014 23:36:22
+% Last Modified by GUIDE v2.5 26-Dec-2014 20:35:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -193,7 +193,7 @@ else
         Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
 
         % If either the addpath or ssh2_command calls fails, set 
-        % handles.calcDose flag to zero (dose calculation will be disabled) 
+        % handles.calcDose flag to zero (dose calculation will be disabled)
         Event('Dose calculation will be disabled', 'WARN');
         handles.calcDose = 0;
 
@@ -208,7 +208,7 @@ clear cmdout;
 Event('Loading default IVDT');
 
 % Open read file handle to default ivdt file
-fid = fopen('./ivdt.txt', 'r');
+fid = fopen('ivdt.txt', 'r');
 
 % If a valid file handle is returned
 if fid > 2
@@ -280,20 +280,15 @@ end
 clear fid tline s ctNums densVals ivdt i;
 
 %% Initialize UI and declare global variables
+% Initialize data variables
+handles = clear_results_Callback(handles.clear_results, '', handles);
+
 % Default folder path when selecting input files
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
 
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
-
-% Declare slice selection list variable and set menu
-handles.slices = {'Manual slice selection'};
-set(handles.slice_menu, 'String', handles.slices);
-
-% Disable slice selection axes
-set(allchild(handles.slice_axes), 'visible', 'off'); 
-set(handles.slice_axes, 'visible', 'off');
 
 % Set beam model menu
 set(handles.beam_menu, 'String', handles.beammodels);
@@ -304,9 +299,6 @@ if length(handles.beammodels) == 2
 else
     set(handles.beam_menu, 'Value', 1);
 end
-
-% Set beam parameters (will also disable calc button)
-beam_menu_Callback(handles.beam_menu, '', handles);
 
 % Declare pitch options. An equal array of pitch values must also exist, 
 % defined next. The options represent the menu options, the values are 
@@ -333,6 +325,9 @@ set(handles.pitch_menu, 'String', vertcat('Select', handles.pitchoptions));
 % Default MLC sinogram to all open
 set(handles.mlc_radio_a, 'Value', 1);
     
+% Set beam parameters (will also disable calc button)
+beam_menu_Callback(handles.beam_menu, '', handles);
+
 % Set the initial image view orientation to Transverse (T)
 handles.tcsview = 'T';
 Event('Default dose view set to Transverse');
@@ -342,8 +337,8 @@ set(handles.alpha, 'String', '20%');
 Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
-% Clear results
-handles = clearResults(handles);
+% Attempt to load the atlas
+handles.atlas = LoadAtlas('atlas.xml');
 
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
@@ -426,7 +421,6 @@ if iscell(name) || sum(name ~= 0)
         handles.image = LoadDICOMImages(path, names);
         
         % Enable structure set browse
-        set(handles.text6, 'Enable', 'on');     
         set(handles.struct_file, 'Enable', 'on');        
         set(handles.struct_browse, 'Enable', 'on');
         
@@ -463,7 +457,6 @@ if iscell(name) || sum(name ~= 0)
             InitializeStatistics(handles.structures));
         
         % Clear and disable structure set browse
-        set(handles.text6, 'Enable', 'off');  
         set(handles.struct_file, 'String', '');
         set(handles.struct_file, 'Enable', 'off');        
         set(handles.struct_browse, 'Enable', 'off');
@@ -531,25 +524,24 @@ if iscell(name) || sum(name ~= 0)
                 % Use bwboundaries to generate X/Y contour points based
                 % on structure mask
                 B = bwboundaries(squeeze(...
-                    imageA.structures{i}.mask(slice, :, :))');
+                    handles.structures{i}.mask(slice, :, :))');
             
                 % Loop through each contour set (typically this is one)
                 for k = 1:length(B)
                     
                     % Plot the contour points given the structure color
-                    plot((B{k}(:,2) - 1) * imageA.width(2) + ...
-                        imageA.start(2), (B{k}(:,1) - 1) * ...
-                        imageA.width(3) + imageA.start(3), ...
-                       'Color', imageA.structures{i}.color/255, ...
+                    plot((B{k}(:,1) - 1) * width(1) + start(1), ...
+                        -(B{k}(:,2) - 1) * width(2) - start(2), ...
+                       'Color', handles.structures{i}.color/255, ...
                        'LineWidth', 2);
                 end
             end
         end
+        
+        % Unhold axes generation
+        hold off;
     end
     
-    % Unhold axes generation
-    hold off;
-
     % Show the slice selection plot
     set(handles.slice_axes, 'visible', 'on');
 
@@ -619,6 +611,121 @@ function struct_browse_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Log event
+Event('Structure browse button selected');
+
+% Request the user to select the structure set DICOM
+Event('UI window opened to select file');
+[name, path] = uigetfile({'*.dcm', 'RTSS Files (*.dcm)'}, ...
+    'Select the Structure Set', handles.path, 'MultiSelect', 'off');
+
+% If the user selected a file, and appropriate inputs are present
+if ~isequal(name, 0) && isfield(handles, 'image') && ...
+        isfield(handles, 'atlas')
+    
+    % Update text box with file name
+    set(handles.struct_file, 'String', fullfile(path, name));
+    
+    % Update default path
+    handles.path = path;
+    Event(['Default file path updated to ', path]);
+    
+    % Load DICOM structure set
+    handles.structures = LoadDICOMStructures(path, name, handles.image, ...
+        handles.atlas);
+    
+    % Initialize DVH table
+    set(handles.dvh_table, 'Data', ...
+        InitializeStatistics(handles.structures, handles.atlas));
+    
+    % Add image contours, if image data already exists
+    if isfield(handles, 'image') && isfield(handles.image, 'data') && ...
+            size(handles.image.data, 3) > 0
+        
+        % Set slice to center of dataset
+        slice = floor(handles.image.dimensions(1)/2);
+    
+        % Extract sagittal slice through center of image
+        imageA = squeeze(handles.image.data(slice, :, :));
+
+        % Set image widths
+        width = [handles.image.width(3) handles.image.width(2)];
+
+        % Set image start values
+        start = [handles.image.start(3) handles.image.start(2)];
+
+        % Plot sagittal plane in slice selector
+        axes(handles.slice_axes);
+
+        % Create reference object based on the start and width inputs
+        reference = imref2d(size(imageA), [start(1) start(1) + ...
+            size(imageA,2) * width(1)], [start(2) start(2) + ...
+            size(imageA,1) * width(2)]);
+
+        % Cast the imageA data as 16-bit unsigned integer
+        imageA = int16(imageA);
+
+        % Display the reference image in HU (subtracting 1024), using a
+        % gray colormap with the range set from -1024 to +1024
+        imshow(imageA - 1024, reference, 'DisplayRange', [-1024 1024], ...
+            'ColorMap', colormap('gray'));
+        
+        % Hold the axes to allow overlapping contours
+        hold on;
+        
+        % Retrieve dvh data
+        stats = get(handles.dvh_table, 'Data');
+        
+        % Loop through each structure
+        for i = 1:length(handles.structures)
+            
+            % If the statistics display column for this structure is set to
+            % true (checked)
+            if stats{i, 2}
+                
+                % Use bwboundaries to generate X/Y contour points based
+                % on structure mask
+                B = bwboundaries(squeeze(...
+                    handles.structures{i}.mask(slice, :, :))');
+            
+                % Loop through each contour set (typically this is one)
+                for k = 1:length(B)
+                    
+                    % Plot the contour points given the structure color
+                    plot((B{k}(:,1) - 1) * width(1) + start(1), ...
+                        -(B{k}(:,2) - 1) * width(2) - start(2), ...
+                       'Color', handles.structures{i}.color/255, ...
+                       'LineWidth', 2);
+                end
+            end
+        end
+        
+        % Unhold axes generation
+        hold off;
+        
+        % Hide the x/y axis on the images
+        axis off;
+
+        % Start the POI tool, which automatically diplays the x/y 
+        % coordinates (based on imref2d above) and the current mouseover 
+        % location
+        impixelinfo;
+
+        % Clear temporary variables
+        clear slice width start stats i B k;
+    end
+    
+% Otherwise no file was selected
+else
+    Event('No file was selected, or supporting data is not present');
+end
+
+% Verify new data
+handles = checkCalculateInputs(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function slice_menu_Callback(hObject, ~, handles) %#ok<*DEFNU>
 % hObject    handle to slice_menu (see GCBO)
@@ -647,10 +754,12 @@ function beam_menu_Callback(hObject, ~, handles)
 % Clear and disable beam output
 set(handles.beamoutput, 'String', '');
 set(handles.beamoutput, 'Enable', 'off');
+set(handles.text9, 'Enable', 'off');
 
 % Clear and disable gantry period
 set(handles.period, 'String', '');
 set(handles.period, 'Enable', 'off');
+set(handles.text13, 'Enable', 'off');
 
 % Clear and disable jaw settings
 set(handles.jaw, 'String', '');
@@ -658,10 +767,12 @@ set(handles.jaw, 'Enable', 'off');
 set(handles.jaw_menu, 'String', 'Select');
 set(handles.jaw_menu, 'Value', 1);
 set(handles.jaw_menu, 'Enable', 'off');
+set(handles.text20, 'Enable', 'off');
 
 % Disable pitch 
 set(handles.pitch, 'Enable', 'off');
 set(handles.pitch_menu, 'Enable', 'off');
+set(handles.text18, 'Enable', 'off');
 
 % Disable MLC parameters
 set(handles.mlc_radio_a, 'Enable', 'off');
@@ -671,6 +782,8 @@ set(handles.mlc_radio_b, 'Enable', 'off');
 set(handles.sino_file, 'Enable', 'off');
 set(handles.sino_browse, 'Enable', 'off');
 set(handles.projection_rate, 'Enable', 'off');
+set(handles.text16, 'Enable', 'off');
+set(handles.text17, 'Enable', 'off');
 
 % Disable sinogram axes
 set(allchild(handles.sino_axes), 'visible', 'off'); 
@@ -793,20 +906,24 @@ if get(hObject, 'Value') > 1
     
     % Enable beam output
     set(handles.beamoutput, 'Enable', 'on');
+    set(handles.text9, 'Enable', 'on');
     
     % Enable gantry period
     set(handles.period, 'String', sprintf('%0.1f', handles.defaultperiod));
     set(handles.period, 'Enable', 'on');
     Event(sprintf('Gantry period set to %0.1f sec', handles.defaultperiod));
-    
+    set(handles.text13, 'Enable', 'on');
+
     % Enable jaw settings
     set(handles.jaw_menu, 'Enable', 'on');
     set(handles.jaw, 'Enable', 'on');
-    
+    set(handles.text20, 'Enable', 'on');
+
     % Enable pitch settings
     set(handles.pitch_menu, 'Enable', 'on');
     set(handles.pitch, 'Enable', 'on');
-    
+    set(handles.text18, 'Enable', 'on');
+
     % Enable MLC parameters
     set(handles.mlc_radio_a, 'Enable', 'on');
     set(handles.mlc_radio_b, 'Enable', 'on');
@@ -818,6 +935,8 @@ if get(hObject, 'Value') > 1
         set(handles.sino_file, 'Enable', 'on');
         set(handles.sino_browse, 'Enable', 'on');
         set(handles.projection_rate, 'Enable', 'on');
+        set(handles.text16, 'Enable', 'on');
+        set(handles.text17, 'Enable', 'on');
 
     end
     
@@ -1016,6 +1135,8 @@ set(handles.mlc_radio_b, 'Value', 0);
 set(handles.sino_file, 'Enable', 'off');
 set(handles.sino_browse, 'Enable', 'off');
 set(handles.projection_rate, 'Enable', 'off');
+set(handles.text16, 'Enable', 'off');
+set(handles.text17, 'Enable', 'off');
 
 % Disable sinogram axes
 set(allchild(handles.sino_axes), 'visible', 'off'); 
@@ -1043,6 +1164,8 @@ set(handles.mlc_radio_a, 'Value', 0);
 set(handles.sino_file, 'Enable', 'on');
 set(handles.sino_browse, 'Enable', 'on');
 set(handles.projection_rate, 'Enable', 'on');
+set(handles.text16, 'Enable', 'on');
+set(handles.text17, 'Enable', 'on');
     
 % If custom sinogram is loaded
 if isfield(handles, 'sinogram') && ~isempty(handles.sinogram)
@@ -1496,29 +1619,29 @@ elseif size(get(handles.ivdt_table, 'Data'), 1) < 2
     disable = true;
     
 % Verify beam output exists and is greater than 0
-elseif isnan(str2double(handles.beamoutput, 'String')) || ...
-        str2double(handles.beamoutput, 'String') <= 0
+elseif isnan(str2double(get(handles.beamoutput, 'String'))) || ...
+        str2double(get(handles.beamoutput, 'String')) <= 0
     
     reason = 'beam output is not valid';
     disable = true;
 
 % Verify gantry period exists and is greater than 0
-elseif isnan(str2double(handles.period, 'String')) || ...
-        str2double(handles.period, 'String') <= 0
+elseif isnan(str2double(get(handles.period, 'String'))) || ...
+        str2double(get(handles.period, 'String')) <= 0
     
     reason = 'gantry period is not valid';
     disable = true;
 
 % Verify field width exists and is greater than 0
-elseif isnan(str2double(handles.jaw, 'String')) || ...
-        str2double(handles.jaw, 'String') <= 0
+elseif isnan(str2double(get(handles.jaw, 'String'))) || ...
+        str2double(get(handles.jaw, 'String')) <= 0
     
     reason = 'field width is not valid';
     disable = true;
     
 % Verify pitch exists and is greater than 0
-elseif isnan(str2double(handles.pitch, 'String')) || ...
-        str2double(handles.pitch, 'String') <= 0
+elseif isnan(str2double(get(handles.pitch, 'String'))) || ...
+        str2double(get(handles.pitch, 'String')) <= 0
     
     reason = 'pitch is not valid';
     disable = true;
@@ -1603,8 +1726,8 @@ if get(handles.mlc_radio_b, 'Value') == 1
         disable = true;
     
     % Verify a projection rate exists and is greater than 0
-    elseif isnan(str2double(handles.projection_rate, 'String')) || ...
-            str2double(handles.projection_rate, 'String') <= 0
+    elseif isnan(str2double(get(handles.projection_rate, 'String'))) || ...
+            str2double(get(handles.projection_rate, 'String')) <= 0
         
         reason = 'projection rate is not valid';
         disable = true;
@@ -1654,19 +1777,21 @@ end
 clear reason pos ivdt;
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function handles = clearResults(handles)
-% clearResults clears all results and UI handles
+function varargout = clear_results_Callback(hObject, ~, handles)
+% hObject    handle to clear_results (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
 % Log action
 if isfield(handles, 'image')
-    Event('Clearing patient plan variables from memory');
+    Event('Clearing all data variables from memory');
 else
-    Event('Initializing patient plan variables');
+    Event('Initializing data variables');
 end
 
-% Clear data variables
+% Clear image data
+set(handles.image_file, 'String', '');  
 handles.image = [];
-handles.structures = [];
 
 % Clear and delete slice selector
 if isfield(handles, 'selector') 
@@ -1680,6 +1805,26 @@ if isfield(handles, 'selector')
     % Clear temporary variable
     clear api;
 end
+
+% Clear slice selection list variable and update menu
+handles.slices = {'Manual slice selection'};
+set(handles.slice_menu, 'String', handles.slices);
+
+% Clear and disable structure set browse
+set(handles.struct_file, 'String', '');  
+set(handles.struct_file, 'Enable', 'off');        
+set(handles.struct_browse, 'Enable', 'off');
+handles.structures = [];
+
+% Disable slice selection axes
+set(allchild(handles.slice_axes), 'visible', 'off'); 
+set(handles.slice_axes, 'visible', 'off');
+
+% Disable calc button
+set(handles.calc_button, 'Enable', 'off');
+
+% Disable DVH table
+set(handles.dvh_table, 'Visible', 'off');
 
 % Disable dose and DVH axes
 set(allchild(handles.dose_axes), 'visible', 'off'); 
@@ -1698,6 +1843,18 @@ set(handles.dvh_table, 'Data', cell(20, 4));
 % Disable export buttons
 set(handles.dose_button, 'Enable', 'off');
 set(handles.dvh_button, 'Enable', 'off');
+
+% If called through the UI, and not another function
+if nargout == 0
+    
+    % Update handles structure
+    guidata(hObject, handles);
+    
+else
+    
+    % Otherwise return the modified handles
+    varargout{1} = handles;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function figure1_SizeChangedFcn(hObject, ~, handles)

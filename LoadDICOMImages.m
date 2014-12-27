@@ -29,6 +29,9 @@ function image = LoadDICOMImages(path, names)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
+% Run in try-catch to log error via Event.m
+try
+    
 % Log start of image load and start timer
 Event(sprintf('Reading images from %s', path));
 tic;
@@ -184,4 +187,9 @@ if isfield(image, 'dimensions')
 % Otherwise, warn user
 else
     Event('DICOM image data could not be parsed', 'ERROR');
+end
+
+% Catch errors, log, and rethrow
+catch err
+    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

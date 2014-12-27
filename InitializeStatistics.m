@@ -48,18 +48,16 @@ if nargin == 0 || nargin > 2
 end
 
 % Initialize empty return cell array
-stats = cell(size(varargin{1}.structures, 2), 4);
+stats = cell(length(varargin{1}), 4);
 
 % Loop through each structure
-for i = 1:size(varargin{1}.structures, 2)
+for i = 1:length(varargin{1})
     
     % Set structure name (in color) and volume
     stats{i,1} = sprintf(['<html><font id="%s" color="rgb(%i,%i,%i)"', ...
-        '>%s</font></html>'], varargin{1}.structures{i}.name, ...
-        varargin{1}.structures{i}.color(1), ...
-        varargin{1}.structures{i}.color(2), ...
-        varargin{1}.structures{i}.color(3), ...
-        varargin{1}.structures{i}.name);
+        '>%s</font></html>'], varargin{1}{i}.name, ...
+        varargin{1}{i}.color(1), varargin{1}{i}.color(2), ...
+        varargin{1}{i}.color(3), varargin{1}{i}.name);
     
     % By default, display all loaded contours
     stats{i,2} = true;
@@ -74,15 +72,13 @@ for i = 1:size(varargin{1}.structures, 2)
         for j = 1:size(varargin{2},2)
             
             % Compute the number of include atlas REGEXP matches
-            in = regexpi(varargin{1}.structures{i}.name, ...
-                varargin{2}{j}.include);
+            in = regexpi(varargin{1}{i}.name, varargin{2}{j}.include);
             
             % If the atlas structure also contains an exclude REGEXP
             if isfield(varargin{2}{j}, 'exclude') 
                 
                 % Compute the number of exclude atlas REGEXP matches
-                ex = regexpi(varargin{1}.structures{i}.name, ...
-                    varargin{2}{j}.exclude);
+                ex = regexpi(varargin{1}{i}.name, varargin{2}{j}.exclude);
             else
                 % Otherwise, return 0 exclusion matches
                 ex = [];
