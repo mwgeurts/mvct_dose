@@ -326,7 +326,7 @@ set(handles.pitch_menu, 'String', vertcat('Select', handles.pitchoptions));
 set(handles.mlc_radio_a, 'Value', 1);
     
 % Set beam parameters (will also disable calc button)
-beam_menu_Callback(handles.beam_menu, '', handles);
+handles = beam_menu_Callback(handles.beam_menu, '', handles);
 
 % Set the initial image view orientation to Transverse (T)
 handles.tcsview = 'T';
@@ -746,7 +746,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function beam_menu_Callback(hObject, ~, handles)
+function varargout = beam_menu_Callback(hObject, ~, handles)
 % hObject    handle to beam_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -956,8 +956,17 @@ end
 % Verify new data
 handles = checkCalculateInputs(handles);
 
-% Update handles structure
-guidata(hObject, handles);
+% If called through the UI, and not another function
+if nargout == 0
+    
+    % Update handles structure
+    guidata(hObject, handles);
+    
+else
+    
+    % Otherwise return the modified handles
+    varargout{1} = handles;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function beam_menu_CreateFcn(hObject, ~, ~)
