@@ -36,6 +36,9 @@ try
 Event(sprintf('Reading images from %s', path));
 tic;
 
+% Start waitbar
+progress = waitbar(0, 'Loading DICOM images');
+
 % Initialize empty variables for the study, series, FOR UID, and dimension
 image.studyUID = '';
 image.seriesUID = '';
@@ -50,6 +53,9 @@ sliceLocations = [];
 
 % Loop through each file in names list
 for i = 1:length(names)
+    
+    % Update waitbar
+    waitbar(i/(length(names)+2), progress);
     
     % Attempt to load each file using dicominfo
     try
@@ -111,6 +117,9 @@ for i = 1:length(names)
     % Log file
     Event(['Reading file ', names{i}]);
 end
+
+% Update waitbar
+waitbar((length(names)+1)/(length(names)+2), progress, 'Processing images');
 
 % Set image type based on series description (for MVCTs) or DICOM
 % header modality tag (for everything else)
@@ -174,8 +183,8 @@ end
 % Create dimensions structure field based on the daily image size
 image.dimensions = size(image.data);
 
-% Clear temporary variables
-clear i images info sliceLocations indices;
+% Update waitbar
+waitbar(1.0, progress, 'Image loading completed');
 
 % If an image was successfully loaded
 if isfield(image, 'dimensions')
@@ -189,7 +198,18 @@ else
     Event('DICOM image data could not be parsed', 'ERROR');
 end
 
+% Close waitbar
+close(progress);
+
+% Clear temporary variables
+clear i images info sliceLocations indices progress;
+
 % Catch errors, log, and rethrow
 catch err
+    
+    % Delete progress handle if it exists
+    if exist('progress','var') && ishandle(progress), delete(progress); end
+    
+    % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

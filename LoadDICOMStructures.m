@@ -43,8 +43,14 @@ Event(sprintf(['Generating structure masks from %s for frame of ', ...
     'reference %s'], varargin{2}, varargin{3}.frameRefUID));
 tic;
 
+% Start waitbar
+progress = waitbar(0, 'Loading DICOM structure set');
+
 % Read DICOM header info from file
 info = dicominfo(fullfile(varargin{1}, varargin{2}));
+
+% Update progress bar
+waitbar(0.1, progress);
 
 % Initialize return variable
 structures = cell(length(fieldnames(info.ROIContourSequence)), 1);
@@ -142,11 +148,18 @@ for item = fieldnames(info.StructureSetROISequence)'
     clear name;
 end
 
+% Update progress bar
+waitbar(0.2, progress);
+
 % Loop through each ROIContourSequence
 for item = fieldnames(info.ROIContourSequence)'
-    
+   
     % Store contour number
     n = info.ROIContourSequence.(item{1}).ReferencedROINumber;
+    
+    % Update progress bar
+    waitbar(0.2 + 0.8 * n/length(fieldnames(info.ROIContourSequence)), ...
+        progress);
     
     % If name was loaded (and therefore this contour matches the atlas
     if isfield(structures{n}, 'name')
@@ -257,14 +270,25 @@ end
 % Remove empty structure fields
 structures = structures(~cellfun('isempty', structures));
 
-% Clear temporary files
-clear info n item subitem points slice mask load;
+% Update waitbar
+waitbar(1.0, progress, 'Structure set loading completed');
 
 % Log completion of function
 Event(sprintf('Successfully loaded %i structures in %0.3f seconds', ...
     length(structures), toc));
 
+% Close waitbar
+close(progress);
+
+% Clear temporary files
+clear info n item subitem points slice mask load progress;
+
 % Catch errors, log, and rethrow
 catch err
+    
+    % Delete progress handle if it exists
+    if exist('progress','var') && ishandle(progress), delete(progress); end
+    
+    % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end
