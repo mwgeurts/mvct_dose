@@ -1,5 +1,5 @@
 function varargout = MVCTdose(varargin)
-% The TomoTherapy® MVCT Dose Calculator is a GUI based standalone 
+% The TomoTherapy MVCT Dose Calculator is a GUI based standalone 
 % application written in MATLAB that parses TomoTherapy patient archives 
 % and DICOM CT/RTSS files and calculates the dose to the CT given a set of
 % MVCT delivery parameters.  The results are displayed and available for
@@ -1759,12 +1759,42 @@ end
 fclose(fidr);
 fclose(fidw);
 
-%% Calculate dose
+% Clear temporary variables
+clear image ivdt plan k folder fidr fidw tline api pos totalTau;
+
+%% Calculate and display dose
 % Calculate dose using image, plan, beam model directory, & SSH2 connection
 handles.dose = CalcDose(image, plan, folder, handles.ssh2);
 
-% Clear temporary variables
-clear image ivdt plan k folder fidr fidw tline api pos totalTau;
+% Clear and set reference to axis
+cla(handles.dose_axes, 'reset');
+axes(handles.dose_axes);
+Event('Plotting dose image');
+
+% Enable Image Viewer UI components
+set(allchild(handles.dose_axes), 'visible', 'on'); 
+set(handles.dose_axes, 'visible', 'on');
+set(handles.dose_slider, 'visible', 'on');
+set(handles.tcs_button, 'visible', 'on'); 
+set(handles.alpha, 'visible', 'on');
+
+% Add necessary fields to image and dose variables
+handles.image.structures = handles.structures;
+handles.image.stats = get(handles.dvh_table, 'Data');
+handles.dose.registration = [];
+
+% Initialize image viewer
+InitializeViewer(handles.dose_axes, handles.tcsview, ...
+    sscanf(get(handles.alpha, 'String'), '%f%%')/100, handles.image, ...
+    handles.dose, handles.dose_slider);
+
+% Update DVH plot
+handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
+    get(handles.dvh_table, 'Data'), handles.image, handles.dose);
+
+% Update Dx/Vx statistics
+set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+    get(handles.dvh_table, 'Data'), handles.dose.dvh));
 
 % Update handles structure
 guidata(hObject, handles);

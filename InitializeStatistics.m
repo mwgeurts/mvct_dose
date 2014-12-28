@@ -1,7 +1,7 @@
 function stats = InitializeStatistics(varargin)
 % InitalizeStatistics reads in a cell array of structures and creates a
 % uitable compatible cell array (for displaying structure statistics, see 
-% MVCTdose.m for more details).
+% parent function for more details).
 %
 % If an atlas is also provided, the structure names will be matched to the 
 % atlas and the Dx/Vx values will be used from the atlas.  If not provided, 
