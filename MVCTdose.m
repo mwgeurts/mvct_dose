@@ -195,7 +195,7 @@ else
         % If either the addpath or ssh2_command calls fails, set 
         % handles.calcDose flag to zero (dose calculation will be disabled)
         Event('Dose calculation will be disabled', 'WARN');
-        handles.calcDose = 0;
+        % handles.calcDose = 0; % DISABLED FOR TESTING
 
     end
 end
@@ -1473,6 +1473,300 @@ function calc_button_Callback(~, ~, handles)
 % hObject    handle to calc_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Calculate dose button pressed');
+
+%% Create Image Input
+% Store image data as temporary variable
+Event('Retrieving image data');
+image = handles.image;
+
+% Retrieve IVDT data
+Event('Retrieving IVDT data');
+ivdt = str2double(get(handles.ivdt_table, 'Data'));
+
+% Remove empty values
+ivdt(any(isnan(ivdt), 2),:) = [];
+
+% Store ivdt data to image structure
+image.ivdt = ivdt;
+
+%% Create Plan Input
+% Initialize plan structure
+Event(['Generating delivery plan from slice selection and beam model', ...
+    ' inputs']);
+plan = struct;
+
+% If a custom sinogram was loaded
+if get(handles.mlc_radio_b, 'Value') == 1
+
+    % Set plan scale (sec/tau) to inverse of projection rate (tau/sec)
+    plan.scale = 1 / str2double(get(handles.projection_rate, 'String'));
+    
+% Otherwise, use an all open sinogram
+else
+    
+    % Assume scale is 1 second/tau
+    plan.scale = 1;
+    
+end
+
+% Log scale
+Event(sprintf('Plan scale set to %g sec/tau', plan.scale));
+
+% Initialize plan.events array with sync event. Events that do not have a 
+% value are given the placeholder value 1.7976931348623157E308 
+plan.events{1,1} = 0;
+plan.events{1,2} = 'sync';
+plan.events{1,3} = 1.7976931348623157E308;
+
+% Add a projection width event at tau = 0
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'projWidth';
+plan.events{k,3} = 1;
+
+% Add isoX and isoY as 0 cm
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'isoX';
+plan.events{k,3} = 0;
+plan.events{k+1,1} = 0;
+plan.events{k+1,2} = 'isoY';
+plan.events{k+1,3} = 0;
+
+% Retrieve slice selector handle
+api = iptgetapi(handles.selector);
+
+% If a valid handle is not returned
+if isempty(api)
+
+    % Throw an error
+    Event('No slice selector found', 'ERROR');
+
+% Otherwise, a valid handle is returned
+else
+
+    % Retrieve current values
+    pos = api.getPosition();
+
+end
+
+% Add isoZ (cm) based on superior slice selection position
+Event(sprintf('MVCT scan start position set to %g cm', -max(pos(1,1), ...
+    pos(2,1))));
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'isoZ';
+plan.events{k,3} = -max(pos(1,1), pos(2,1));
+
+% Add isoXRate and isoYRate as 0 cm/tau
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'isoXRate';
+plan.events{k,3} = 0;
+plan.events{k+1,1} = 0;
+plan.events{k+1,2} = 'isoYRate';
+plan.events{k+1,3} = 0;
+
+% Add isoZRate (cm/tau) as pitch (cm/rot) / GP (sec/rot) * scale (sec/tau)
+Event(sprintf('Couch velocity set to %g cm/sec', ...
+    str2double(get(handles.pitch, 'String')) / ...
+    str2double(get(handles.period, 'String'))));
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'isoZRate';
+plan.events{k,3} = str2double(get(handles.pitch, 'String')) / ...
+    str2double(get(handles.period, 'String')) * plan.scale;
+
+% Add jawBack and jawFront based on UI value, assuming beam is symmetric
+% about isocenter (in cm at isocenter divided by SAD)
+Event(sprintf('Jaw positions set to [-%g %g]', ...
+    str2double(get(handles.jaw, 'String')) / (85 * 2), ...
+    str2double(get(handles.jaw, 'String')) / (85 * 2)));
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'jawBack';
+plan.events{k,3} = -str2double(get(handles.jaw, 'String')) / (85 * 2);
+plan.events{k+1,1} = 0;
+plan.events{k+1,2} = 'jawFront';
+plan.events{k+1,3} = str2double(get(handles.jaw, 'String')) / (85 * 2);
+
+% Add jawBackRate and jawFrontRate as 0 (no jaw motion)
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'jawBackRate';
+plan.events{k,3} = 0;
+plan.events{k+1,1} = 0;
+plan.events{k+1,2} = 'jawFrontRate';
+plan.events{k+1,3} = 0;
+
+% Add start angle as 0 deg
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'gantryAngle';
+plan.events{k,3} = 0;
+
+% Add gantry rate (deg/tau) based on 360 (deg/rot) / UI value (sec/rot) *
+% scale (sec/tau)
+Event(sprintf('Gantry rate set to %g deg/sec', 360 / ...
+    str2double(get(handles.period, 'String'))));
+k = size(plan.events, 1) + 1;
+plan.events{k,1} = 0;
+plan.events{k,2} = 'gantryRate';
+plan.events{k,3} = 360 / str2double(get(handles.period, 'String')) * ...
+    plan.scale;
+
+% Determine total number of projections based on couch travel distance (cm)
+% / pitch (cm/rot) * GP (sec/rot) / scale (sec/tau)
+totalTau = abs(pos(2,1) - pos(1,1)) / ...
+    str2double(get(handles.pitch, 'String')) * ...
+    str2double(get(handles.period, 'String')) / plan.scale;
+Event(sprintf('End of Procedure set to %g projections', totalTau));
+
+% Add unsync and eop events at final tau value. These events do not have a 
+% value, so use the placeholder
+k = size(plan.events,1)+1;
+plan.events{k,1} = totalTau;
+plan.events{k,2} = 'unsync';
+plan.events{k,3} = 1.7976931348623157E308;
+plan.events{k+1,1} = totalTau;
+plan.events{k+1,2} = 'eop';
+plan.events{k+1,3} = 1.7976931348623157E308;
+
+% Set lowerLeafIndex plan variable
+Event('Lower Leaf Index set to 0');
+plan.lowerLeafIndex = 0;
+
+% Set numberOfLeaves
+Event('Number of Leaves set to 64');
+plan.numberOfLeaves = 64;
+
+% Set numberOfProjections to next whole integer
+Event(sprintf('Number of Projections set to %i', ceil(totalTau)));
+plan.numberOfProjections = ceil(totalTau);
+
+% Set startTrim and stopTrim
+Event(sprintf('Start and stop trim set to 1 and %i', ceil(totalTau)));
+plan.startTrim = 1;
+plan.stopTrim = ceil(totalTau);
+
+% If a custom sinogram was loaded
+if get(handles.mlc_radio_b, 'Value') == 1
+
+    % If custom sinogram is less than what is needed
+    if size(handles.sinogram, 2) < ceil(totalTau)
+        
+        % Warn user that additional closed projections will be used
+        Event(sprintf('Custom sinogram is shorter than need by %i ', ...
+            'projections, and will be extended with all closed leaves', ...
+            ceil(totalTau) - size(handles.sinogram, 2)), 'WARN');
+        
+        % Initialize empty plan sinogram
+        plan.sinogram = zeros(64, plan.numberOfProjections);
+        
+        % Fill with custom sinogram
+        plan.sinogram(:, 1:size(handles.sinogram, 2)) = handles.sinogram;
+        
+    % Otherwise, if custom sinogram is larger
+    elseif size(handles.sinogram, 2) > ceil(totalTau)
+        
+        % Warn user that not all of sinogram will be used
+        Event(sprintf('Custom sinogram is larger than need by %i ', ...
+            'projections, which will be discarded for dose calculation', ...
+            size(handles.sinogram, 2) - ceil(totalTau)), 'WARN');
+        
+        % Fill with custom sinogram
+        plan.sinogram = handles.sinogram(:, 1:ceil(totalTau));
+    
+    % Otherwise, it is just right
+    else
+        % Inform the user
+        Event('Custom sinogram is just right!');
+        
+        % Fill with custom sinogram
+        plan.sinogram = handles.sinogram;
+    end
+    
+% Otherwise, use an all open sinogram
+else
+    Event('Generating all open leaves sinogram');
+    plan.sinogram = ones(64, plan.numberOfProjections);
+end
+
+%% Write beam model to temporary directory
+% Generate temporary folder
+folder = tempname;
+[status, cmdout] = system(['mkdir ', folder]);
+if status > 0
+    Event(['Error occurred creating temporary directory: ', cmdout], ...
+        'ERROR');
+end
+
+% Copy beam model files to temporary directory
+Event(['Copying beam model files from ', fullfile(handles.modeldir, ...
+    handles.beammodels{get(handles.beam_menu, 'Value')}), '/ to ', folder]);
+[status, cmdout] = system(['cp ', fullfile(handles.modeldir, ...
+    handles.beammodels{get(handles.beam_menu, 'Value')}, '*.*'), ...
+    ' ', folder, '/']);
+
+% If status is 0, cp was successful.  Otherwise, log error
+if status > 0
+    Event(['Error occurred copying beam model files to temporary ', ...
+        'directory: ', cmdout], 'ERROR');
+end
+
+% Clear temporary variables
+clear status cmdout;
+
+% Open read handle to beam model dcom.header
+fidr = fopen(fullfile(handles.modeldir, handles.beammodels{get(...
+    handles.beam_menu, 'Value')}, 'dcom.header'), 'r');
+
+% Open write handle to temporary dcom.header
+Event('Editing dcom.header to specify output');
+fidw = fopen(fullfile(folder, 'dcom.header'), 'w');
+
+% If either file handles are invalid, throw an error
+if fidr < 3 || fidw < 3
+    Event('A file handle could not be opened to dcom.header', 'ERROR');
+end
+
+% Retrieve the first line from dcom.header
+tline = fgetl(fidr);
+
+% While data exists
+while ischar(tline)
+    
+    % If line contains beam output
+    if ~isempty(regexpi(tline, 'dcom.efiot'))
+        
+        % Write custom beam output based on UI value
+        fprintf(fidw, 'dcom.efiot = %g\n', ...
+            str2double(get(handles.beamoutput, 'String')));
+        
+    % Otherwise, write tline back to temp file
+    else
+        fprintf(fidw, '%s\n', tline);
+    end
+    
+    % Retrieve the next line
+    tline = fgetl(fidr);
+end
+
+% Close file handles
+fclose(fidr);
+fclose(fidw);
+
+% Calculate dose using image, plan, beam model directory, & SSH2 connection
+handles.dose = CalcDose(image, plan, folder, handles.ssh2);
+
+% Clear temporary variables
+clear image ivdt plan k folder fidr fidw tline api pos totalTau;
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dvh_table_CellEditCallback(hObject, ~, handles)
