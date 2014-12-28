@@ -1397,10 +1397,35 @@ handles = UpdateDoseDisplay(handles);
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dvh_button_Callback(hObject, ~, handles)
+function dvh_button_Callback(~, ~, handles)
 % hObject    handle to dvh_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('DVH export button selected');
+
+% Prompt user to select save location
+Event('UI window opened to select save file location');
+[name, path] = uiputfile('*.csv','Save DVH As');
+
+% If the user provided a file location
+if ~isequal(name, 0) && isfield(handles, 'image') && ...
+        isfield(handles, 'structures') && isfield(handles, 'dose')
+    
+    % Store structures to image variable
+    handles.image.structures = handles.structures;
+    
+    % Execute WriteDVH
+    WriteDVH(handles.image, handles.dose, fullfile(path, name));
+    
+% Otherwise no file was selected
+else
+    Event('No file was selected, or supporting data is not present');
+end
+
+% Clear temporary variables
+clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dose_button_Callback(hObject, ~, handles)
@@ -1795,6 +1820,10 @@ handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
 % Update Dx/Vx statistics
 set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
     get(handles.dvh_table, 'Data'), handles.dose.dvh));
+
+% Enable DVH and dose export buttons
+set(handles.dvh_button, 'Enable', 'on');
+set(handles.dose_button, 'Enable', 'on');
 
 % Update handles structure
 guidata(hObject, handles);
