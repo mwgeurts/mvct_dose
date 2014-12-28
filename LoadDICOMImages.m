@@ -9,10 +9,10 @@ function image = LoadDICOMImages(path, names)
 %
 % The following variables are returned upon succesful completion:
 %   image: structure containing the image data, dimensions, width, type,
-%       start coordinates, study UID, series UID, and frame of reference 
-%       UID of the image set. The data is a three dimensional array of CT 
-%       values, while the dimensions, width, and start fields are three 
-%       element vectors.  The UIDs and type are returned as a string.
+%       start coordinates, and key DICOM header values. The data is a three 
+%       dimensional array of CT values, while the dimensions, width, and 
+%       start fields are three element vectors.  The DICOM header values 
+%       are returned as a strings.
 %
 % Copyright (C) 2015 University of Wisconsin Board of Regents
 %
@@ -39,10 +39,15 @@ tic;
 % Start waitbar
 progress = waitbar(0, 'Loading DICOM images');
 
-% Initialize empty variables for the study, series, FOR UID, and dimension
+% Initialize empty variables for the UIDs, patient demographics, and image 
+% dimensions
+image.classUID = '';
 image.studyUID = '';
 image.seriesUID = '';
 image.frameRefUID = '';
+image.instanceUIDs = cell(0);
+image.patientName = '';
+image.patientID = '';
 image.width(3) = 0;
 
 % Initialize empty 3D array for images and vector of slice locations
@@ -74,20 +79,23 @@ for i = 1:length(names)
         continue
     end 
     
-    % If this is the first DICOM image (and the study and series IDs
+    % If this is the first DICOM image (and the class UID
     % have not yet been set
-    if strcmp(image.studyUID,'') 
+    if strcmp(image.classUID,'') 
         
-        % Store the study/series/FOR UID, and slice thickness (in cm)
+        % Store the UIDs, patient demographics, and slice thickness (in cm)
+        image.classUID = info.SOPClassUID;
         image.studyUID = info.StudyInstanceUID;
         image.seriesUID = info.SeriesInstanceUID;
         image.frameRefUID = info.FrameOfReferenceUID;
+        image.patientName = info.PatientName;
+        image.patientID = info.PatientID;
         image.width(3) = info.SliceThickness / 10; % cm
-
+        
     % Otherwise, if this file's study UID does not match the others,
     % multiple DICOM studies may be present in the same folder (not
     % currently supported)
-    elseif ~strcmp(image.studyUID,info.StudyInstanceUID)
+    elseif ~strcmp(image.studyUID, info.StudyInstanceUID)
         Event(['Multiple DICOM Study Instance UIDs were found in ', ...
             'this list.  Please select only one study.'], ...
             'ERROR');
@@ -107,8 +115,11 @@ for i = 1:length(names)
         Event('Variable slice thickness images found', 'ERROR');
     end
     
+    % Append this slice's instance UID
+    image.instanceUIDs{length(image.instanceUIDs)+1} = info.SOPInstanceUID;
+    
     % Append this slice's location to the sliceLocations vector
-    sliceLocations(size(sliceLocations,2)+1) = ...
+    sliceLocations(length(sliceLocations)+1) = ...
         info.SliceLocation; %#ok<*AGROW>
     
     % Append this slice's image data to the images array
@@ -149,7 +160,7 @@ if info.ImageOrientationPatient(1) == 1
 
     % Sort sliceLocations vector in ascending order
     [~, indices] = sort(sliceLocations, 'ascend');
-
+    
 % Otherwise, if the patient is Feet First (currently not supported)
 elseif info.ImageOrientationPatient(1) == -1
     

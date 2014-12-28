@@ -1407,7 +1407,7 @@ Event('DVH export button selected');
 
 % Prompt user to select save location
 Event('UI window opened to select save file location');
-[name, path] = uiputfile('*.csv','Save DVH As');
+[name, path] = uiputfile('*.csv', 'Save DVH As');
 
 % If the user provided a file location
 if ~isequal(name, 0) && isfield(handles, 'image') && ...
@@ -1428,10 +1428,38 @@ end
 clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dose_button_Callback(hObject, ~, handles)
+function dose_button_Callback(~, ~, handles)
 % hObject    handle to dose_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Dose export button selected');
+
+% Prompt user to select save location
+Event('UI window opened to select save file location');
+[name, path] = uiputfile('*.dcm', 'Save Dose As');
+
+% If the user provided a file location
+if ~isequal(name, 0) && isfield(handles, 'image') && ...
+        isfield(handles, 'structures') && isfield(handles, 'dose')
+    
+    % Store structures to image variable
+    handles.image.structures = handles.structures;
+    
+    % Set series description 
+    handles.image.seriesDescription = 'TomoTherapy MVCT Calculated Dose';
+    
+    % Execute WriteDICOMDose
+    WriteDICOMDose(handles.image, handles.dose, fullfile(path, name));
+    
+% Otherwise no file was selected
+else
+    Event('No file was selected, or supporting data is not present');
+end
+
+% Clear temporary variables
+clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function jaw_menu_Callback(hObject, ~, handles)

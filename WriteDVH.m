@@ -1,19 +1,21 @@
 function varargout = WriteDVH(varargin)
 % WriteDVH computes the DVH for each structure included in the image input
 % variable given the dose input variable and writes the resulting DVHs to 
-% a comma-separated value file.  The first row contains the file name, the 
-% second row contains column headers for each structure set (including the 
-% volume in cc in parentheses), with each subsequent row containing the 
-% percent volume of each structure at or above the dose specified in the 
-% first column (in Gy).  The resolution is determined by dividing the 
-% maximum dose by 1001.
+% a comma-separated value file.  
+%
+% The first row contains the file name, the second row contains column 
+% headers for each structure set (including the volume in cc in 
+% parentheses), with each subsequent row containing the percent volume of 
+% each structure at or above the dose specified in the first column (in 
+% Gy).  The resolution is determined by dividing the maximum dose by 1001.
 %
 % The following variables are required for proper execution: 
 %   varargin{1}: structure containing the CT image data and structure set 
 %       data. See LoadReferenceImage and LoadReferenceStructures for more
 %       information on the format of this object.
-%   varargin{2}: structure containing the calculated dose. See CalcDose for 
-%       more information on the format of this object.
+%   varargin{2}: structure containing the calculated dose. Must contain
+%       start, width, and data fields. See CalcDose for more information on 
+%       the format of this object.
 %   varargin{3} (optional): string containing the path and name to write 
 %       the DVH .csv file to. MATLAB must have write access to this 
 %       location to execute. If not provided, a DVH file will not be saved.
