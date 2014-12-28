@@ -1759,6 +1759,7 @@ end
 fclose(fidr);
 fclose(fidw);
 
+%% Calculate dose
 % Calculate dose using image, plan, beam model directory, & SSH2 connection
 handles.dose = CalcDose(image, plan, folder, handles.ssh2);
 
