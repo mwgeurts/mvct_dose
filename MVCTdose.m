@@ -195,7 +195,7 @@ else
         % If either the addpath or ssh2_command calls fails, set 
         % handles.calcDose flag to zero (dose calculation will be disabled)
         Event('Dose calculation will be disabled', 'WARN');
-        % handles.calcDose = 0; % DISABLED FOR TESTING
+        handles.calcDose = 0;
 
     end
 end
@@ -244,6 +244,7 @@ if fid > 2
             
         % Otherwise, set IVDT table
         else
+            
             % Initialize ivdt temp cell array
             ivdt = cell(length(ctNums{1}) + 1, 2);
             
@@ -442,15 +443,96 @@ if iscell(name) || sum(name ~= 0)
         end
     else
         
-        % Load image, structure set, and IVDT from patient archive
-        [handles.image, handles.structures, ivdt] = ...
-            LoadArchiveImages(path, names{1});
+        % Start waitbar
+        progress = waitbar(0, 'Loading patient archive');
+        
+        % Search for plans and MVCT scan lengths
+        scans = FindMVCTScanLengths(path, names{1});
+        
+        % Update progress bar
+        waitbar(0.3, progress);
+        
+        % If no plans were found
+        if isempty(scans)
+            
+            % Log event
+            Event('No plans were found in selected patient archive', ...
+                'ERROR');
+            
+        % Otherwise, if one plan was found
+        elseif length(scans) == 1
+            
+            s(1) = 1;
+            
+        % Otherwise, if more than one plan was found
+        elseif length(scans) > 1
+            
+            % Prompt user to select plan
+            Event('Opening UI for user to select image set');
+            [s, v] = listdlg('PromptString', ...
+                'Multiple plans were found. Select a plan to load:', ...
+                'SelectionMode', 'ListString', {scans.planName});
+            
+            % If no plan was selected, throw an error
+            if v == 0
+                Event('No plan is selected', 'ERROR');
+            end
+            
+            % Clear temporary variable
+            clear v;
+        end
+        
+        % Load image 
+        handles.image = LoadReferenceImage(path, names{1}, ...
+            scans{s(1)}.planUID);
+        
+        % Update progress bar
+        waitbar(0.6, progress);
+        
+        % Load structure set
+        handles.structures = LoadReferenceStructures(path, names{1}, ...
+            handles.image, handles.atlas);
+        
+        % Update progress bar
+        waitbar(0.9, progress);
+        
+        % Initialize slice menu
+        Event(sprintf('Loading %i scans to slice selection menu', ...
+            length(scans{s(1)}.scanLengths)));
+        handles.slices = cell(1, length(scans{s(1)}.scanLengths)+1);
+        handles.slices{1} = 'Manual slice selection';
+        
+        % Loop through scan lengths
+        for i = 1:length(scans{s(1)}.scanLengths)
+            handles.slices{i+1} = sprintf('%i. [%g %g]', i, ...
+                scans{s(1)}.scanLengths(i,:));
+        end
+        
+        % Update slice selection menu UI
+        set(handles.slice_menu, 'String', handles.slices);
+        set(handles.slice_menu, 'Value', 1);
+        
+        % Initialize ivdt temp cell array
+        Event('Updating IVDT table from patient archive');
+        ivdt = cell(size(handles.image.ivdt, 1) + 1, 2);
+
+        % Loop through elements, writing formatted values
+        for i = 1:size(handles.image.ivdt, 1)
+
+            % Save formatted numbers
+            ivdt{i,1} = sprintf('%0.0f', handles.image.ivdt(i,1) - 1024);
+            ivdt{i,2} = sprintf('%g', handles.image.ivdt(i, 2));
+
+        end
         
         % Set IVDT table
         set(handles.ivdt_table, 'Data', ivdt);
         
         % Clear temporary variables
-        clear ivdt;
+        clear scans s i ivdt;
+        
+        % Update waitbar
+        waitbar(1.0, progress, 'Patient archive loading completed');
         
         % Initialize DVH table
         set(handles.dvh_table, 'Data', ...
@@ -460,6 +542,12 @@ if iscell(name) || sum(name ~= 0)
         set(handles.struct_file, 'String', '');
         set(handles.struct_file, 'Enable', 'off');        
         set(handles.struct_browse, 'Enable', 'off');
+        
+        % Close waitbar
+        close(progress);
+        
+        % Clear temporary variables
+        clear progress;
     end
     
     % Delete slice selector if one exists
@@ -531,7 +619,7 @@ if iscell(name) || sum(name ~= 0)
                     
                     % Plot the contour points given the structure color
                     plot((B{k}(:,1) - 1) * width(1) + start(1), ...
-                        -(B{k}(:,2) - 1) * width(2) - start(2), ...
+                        (B{k}(:,2) - 1) * width(2) + start(2), ...
                        'Color', handles.structures{i}.color/255, ...
                        'LineWidth', 2);
                 end
@@ -693,7 +781,7 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
                     
                     % Plot the contour points given the structure color
                     plot((B{k}(:,1) - 1) * width(1) + start(1), ...
-                        -(B{k}(:,2) - 1) * width(2) - start(2), ...
+                        (B{k}(:,2) - 1) * width(2) + start(2), ...
                        'Color', handles.structures{i}.color/255, ...
                        'LineWidth', 2);
                 end
@@ -731,6 +819,33 @@ function slice_menu_Callback(hObject, ~, handles) %#ok<*DEFNU>
 % hObject    handle to slice_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% If user selected a procedure
+if get(hObject, 'Value') > 1
+    
+    % Retrieve positions from slice menu
+    val = cell2mat(textscan(...
+        handles.slices{get(hObject, 'Value')}, '%f [%f %f]'));
+    
+    % Log event
+    Event(sprintf('Updating slice selector to [%g %g]', val(2:3)));
+    
+    % Retrieve handle to slice selector API
+    api = iptgetapi(handles.selector);
+    
+    % Get current handle position
+    pos = api.getPosition();
+
+    % Update start and end values
+    pos(1,1) = val(2);
+    pos(2,1) = val(3);
+    
+    % Update slice selector
+    api.setPosition(pos);
+    
+    % Clear temporary variables
+    clear val pos api;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function slice_menu_CreateFcn(hObject, ~, ~)
@@ -1541,6 +1656,9 @@ ivdt = str2double(get(handles.ivdt_table, 'Data'));
 
 % Remove empty values
 ivdt(any(isnan(ivdt), 2),:) = [];
+
+% Convert HU values back to CT numbers
+ivdt(:,1) = ivdt(:,1) + 1024;
 
 % Store ivdt data to image structure
 image.ivdt = ivdt;
