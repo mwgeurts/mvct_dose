@@ -251,9 +251,6 @@ for item = fieldnames(info.ROIContourSequence)'
         structures{n}.volume = sum(sum(sum(structures{n}.mask))) * ...
             prod(varargin{3}.width);
 
-        % Flip the structure mask in the first dimension
-        structures{n}.mask = fliplr(structures{n}.mask);
-        
         % Check if at least one voxel in the mask was set to true
         if max(max(max(structures{n}.mask))) == 0
             
