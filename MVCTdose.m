@@ -334,7 +334,7 @@ handles.tcsview = 'T';
 Event('Default dose view set to Transverse');
 
 % Set the default transparency
-set(handles.alpha, 'String', '20%');
+set(handles.alpha, 'String', '40%');
 Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
@@ -585,13 +585,9 @@ if iscell(name) || sum(name ~= 0)
     reference = imref2d(size(imageA), [start(1) start(1) + size(imageA,2) * ...
         width(1)], [start(2) start(2) + size(imageA,1) * width(2)]);
     
-    % Cast the imageA data as 16-bit unsigned integer
-    imageA = int16(imageA);
-    
-    % Display the reference image in HU (subtracting 1024), using a
-    % gray colormap with the range set from -1024 to +1024
-    imshow(imageA - 1024, reference, 'DisplayRange', [-1024 1024], ...
-        'ColorMap', colormap('gray'));
+    % Display the reference image
+    imshow(ind2rgb(gray2ind((imageA) / 2048, 64), colormap('gray')), ...
+            reference);
     
     % Add image contours
     if isfield(handles, 'structures') && ~isempty(handles.structures)
@@ -750,13 +746,9 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
             size(imageA,2) * width(1)], [start(2) start(2) + ...
             size(imageA,1) * width(2)]);
 
-        % Cast the imageA data as 16-bit unsigned integer
-        imageA = int16(imageA);
-
-        % Display the reference image in HU (subtracting 1024), using a
-        % gray colormap with the range set from -1024 to +1024
-        imshow(imageA - 1024, reference, 'DisplayRange', [-1024 1024], ...
-            'ColorMap', colormap('gray'));
+        % Display the reference image
+        imshow(ind2rgb(gray2ind((imageA) / 2048, 64), colormap('gray')), ...
+                reference);
         
         % Hold the axes to allow overlapping contours
         hold on;
@@ -1506,7 +1498,9 @@ switch handles.tcsview
 end
 
 % Re-initialize image viewer with new T/C/S value
-handles = UpdateDoseDisplay(handles);
+InitializeViewer(handles.dose_axes, handles.tcsview, ...
+    sscanf(get(handles.alpha, 'String'), '%f%%')/100, handles.image, ...
+    handles.dose, handles.dose_slider);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1637,7 +1631,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function calc_button_Callback(~, ~, handles)
+function calc_button_Callback(hObject, ~, handles)
 % hObject    handle to calc_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -1645,11 +1639,10 @@ function calc_button_Callback(~, ~, handles)
 % Log event
 Event('Calculate dose button pressed');
 
-%% Create Image Input
-% Store image data as temporary variable
-Event('Retrieving image data');
-image = handles.image;
+% Start waitbar
+progress = waitbar(0, 'Calculating dose');
 
+%% Create Image Input
 % Retrieve IVDT data
 Event('Retrieving IVDT data');
 ivdt = str2double(get(handles.ivdt_table, 'Data'));
@@ -1661,7 +1654,10 @@ ivdt(any(isnan(ivdt), 2),:) = [];
 ivdt(:,1) = ivdt(:,1) + 1024;
 
 % Store ivdt data to image structure
-image.ivdt = ivdt;
+handles.image.ivdt = ivdt;
+
+% Update progress bar
+waitbar(0.05, progress);
 
 %% Create Plan Input
 % Initialize plan structure
@@ -1707,6 +1703,9 @@ plan.events{k+1,1} = 0;
 plan.events{k+1,2} = 'isoY';
 plan.events{k+1,3} = 0;
 
+% Update progress bar
+waitbar(0.1, progress);
+
 % Retrieve slice selector handle
 api = iptgetapi(handles.selector);
 
@@ -1725,12 +1724,15 @@ else
 end
 
 % Add isoZ (cm) based on superior slice selection position
-Event(sprintf('MVCT scan start position set to %g cm', -max(pos(1,1), ...
+Event(sprintf('MVCT scan start position set to %g cm', max(pos(1,1), ...
     pos(2,1))));
 k = size(plan.events, 1) + 1;
 plan.events{k,1} = 0;
 plan.events{k,2} = 'isoZ';
-plan.events{k,3} = -max(pos(1,1), pos(2,1));
+plan.events{k,3} = max(pos(1,1), pos(2,1));
+
+% Update progress bar
+waitbar(0.15, progress);
 
 % Add isoXRate and isoYRate as 0 cm/tau
 k = size(plan.events, 1) + 1;
@@ -1743,12 +1745,12 @@ plan.events{k+1,3} = 0;
 
 % Add isoZRate (cm/tau) as pitch (cm/rot) / GP (sec/rot) * scale (sec/tau)
 Event(sprintf('Couch velocity set to %g cm/sec', ...
-    str2double(get(handles.pitch, 'String')) / ...
+    -str2double(get(handles.pitch, 'String')) / ...
     str2double(get(handles.period, 'String'))));
 k = size(plan.events, 1) + 1;
 plan.events{k,1} = 0;
 plan.events{k,2} = 'isoZRate';
-plan.events{k,3} = str2double(get(handles.pitch, 'String')) / ...
+plan.events{k,3} = -str2double(get(handles.pitch, 'String')) / ...
     str2double(get(handles.period, 'String')) * plan.scale;
 
 % Add jawBack and jawFront based on UI value, assuming beam is symmetric
@@ -1866,6 +1868,9 @@ else
     plan.sinogram = ones(64, plan.numberOfProjections);
 end
 
+% Update progress bar
+waitbar(0.2, progress);
+
 %% Write beam model to temporary directory
 % Generate temporary folder
 folder = tempname;
@@ -1890,6 +1895,9 @@ end
 
 % Clear temporary variables
 clear status cmdout;
+
+% Update progress bar
+waitbar(0.25, progress);
 
 % Open read handle to beam model dcom.header
 fidr = fopen(fullfile(handles.modeldir, handles.beammodels{get(...
@@ -1930,12 +1938,18 @@ end
 fclose(fidr);
 fclose(fidw);
 
-% Clear temporary variables
-clear image ivdt plan k folder fidr fidw tline api pos totalTau;
+% Update progress bar
+waitbar(0.3, progress);
 
 %% Calculate and display dose
 % Calculate dose using image, plan, beam model directory, & SSH2 connection
-handles.dose = CalcDose(image, plan, folder, handles.ssh2);
+handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2);
+
+% Update progress bar
+waitbar(0.7, progress, 'Updating results');
+
+% Clear temporary variables
+clear ivdt plan k folder fidr fidw tline api pos totalTau;
 
 % Clear and set reference to axis
 cla(handles.dose_axes, 'reset');
@@ -1959,17 +1973,34 @@ InitializeViewer(handles.dose_axes, handles.tcsview, ...
     sscanf(get(handles.alpha, 'String'), '%f%%')/100, handles.image, ...
     handles.dose, handles.dose_slider);
 
-% Update DVH plot
-handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
-    get(handles.dvh_table, 'Data'), handles.image, handles.dose);
+% Update progress bar
+waitbar(0.8, progress);
 
-% Update Dx/Vx statistics
-set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-    get(handles.dvh_table, 'Data'), handles.dose.dvh));
+% If structures are present
+if isfield(handles, 'structures') && ~isempty(handles.structures)
+
+    % Update DVH plot
+    handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
+        get(handles.dvh_table, 'Data'), handles.image, handles.dose);
+
+    % Update progress bar
+    waitbar(0.9, progress);
+
+    % Update Dx/Vx statistics
+    set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+        get(handles.dvh_table, 'Data'), handles.dose.dvh));
+end
+
+% Update progress bar
+waitbar(1.0, progress, 'Dose calculation completed');
 
 % Enable DVH and dose export buttons
 set(handles.dvh_button, 'Enable', 'on');
 set(handles.dose_button, 'Enable', 'on');
+
+% Close and delete progress handle
+close(progress);
+clear progress;
 
 % Update handles structure
 guidata(hObject, handles);

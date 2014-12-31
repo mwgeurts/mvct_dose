@@ -251,6 +251,9 @@ for item = fieldnames(info.ROIContourSequence)'
         structures{n}.volume = sum(sum(sum(structures{n}.mask))) * ...
             prod(varargin{3}.width);
 
+        % Flip the mask in the third direction
+        structures{n}.mask = flip(structures{n}.mask, 3);
+
         % Check if at least one voxel in the mask was set to true
         if max(max(max(structures{n}.mask))) == 0
             

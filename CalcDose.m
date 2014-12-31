@@ -9,6 +9,10 @@ function dose = CalcDose(varargin)
 % SCP and gpusadose executed via the provided SSH connection (See the 
 % README for more infomation). 
 %
+% Note, an internal flag does exist to force sadose computation (set sadose
+% to 1). This should only be used if non-analytic scatter kernels are
+% necessary, as it will significantly slow down dose calculation.
+%
 % Following execution, the CT image, folder, and SSH connection variables
 % are persisted, such that CalcDose may be executed again with only a new
 % plan input argument.
@@ -22,8 +26,8 @@ function dose = CalcDose(varargin)
 %       number of projections, number of leaves, sync/unsync actions, and 
 %       leaf sinogram. May optionally include a 6-element registration
 %       vector.
-%   folder (optional): string containing the path to the beam model files
-%       (dcom.header, fat.img, kernel.img, etc.)
+%   modelfolder (optional): string containing the path to the beam model 
+%       files (dcom.header, fat.img, kernel.img, etc.)
 %   ssh2 (optional): ssh connection object to remote calculation server
 %
 % The following variables are returned upon succesful completion:
@@ -53,13 +57,6 @@ persistent folder remotefolder modelfolder image ssh2;
 % Execute in try/catch statement
 try  
 
-% Downsampling factor.  The calculated dose will be downsampled (from the
-% CT image resolution) by this factor in the IECX and IECY directions, then
-% upsampled (using nearest neighbor interpolation) back to the original CT
-% resolution following calculation.  downsample must be an even divisor of
-% the CT dimensions (1, 2, 4, etc).
-downsample = 1;
-
 % If only one argument was passed, store as registration and use previous
 % image and plan variables
 if nargin == 1
@@ -67,7 +64,8 @@ if nargin == 1
     % Store the plan variable
     plan = varargin{1};
     
-% Otherwise, store image, plan, and model folder from input arguments
+% Otherwise, store image, plan, and model folder input arguments and assume
+% GPU algorithm and local dose calculation
 elseif nargin == 3
     
     % Store image, plan, and beam model folder variables
@@ -75,7 +73,7 @@ elseif nargin == 3
     plan = varargin{2};    
     modelfolder = varargin{3};
     
-% Otherwise, store image, plan, model folder, and ssh2 from input arguments
+% Otherwise, store image, plan, model folder, and ssh2 input arguments
 elseif nargin == 4
     
     % Store image, plan, beam model folder, and ssh2 connection variables
@@ -83,12 +81,27 @@ elseif nargin == 4
     plan = varargin{2};
     modelfolder = varargin{3};
     ssh2 = varargin{4};
-    
+
 % If zero, two, or more than four arguments passed, log error
 else
     Event('An incorrect number of input arguments were passed to CalcDose', ...
         'ERROR');
 end
+
+% Downsampling factor.  The calculated dose will be downsampled (from the
+% CT image resolution) by this factor in the IECX and IECY directions, then
+% upsampled (using nearest neighbor interpolation) back to the original CT
+% resolution following calculation.  downsample must be an even divisor of
+% the CT dimensions (1, 2, 4, etc).  Dose calculation is known to fail for
+% high resolution images sets (i.e., 512x512) due to memory issues.
+if size(image.data, 1) >= 512
+    downsample = 2;
+else
+    downsample = 1;
+end
+
+% Flag to force sadose computation
+sadose = 0;
 
 % Log SSH2 status
 if exist('ssh2', 'var') && ~isempty(ssh2)
@@ -255,6 +268,29 @@ if nargin >= 2
     % will speed up dose calculation
     fprintf(fid, 'dose.azimuths=4\n');
 
+    % Reduce fluence rate/steps to 1. This will also speed up dose 
+    % calculation
+    fprintf(fid, 'dose.xRayRate=1\n');
+    fprintf(fid, 'dose.zRayRate=1\n');
+    
+    % If using gpusadose, write nvbb settings
+    if sadose == 0
+        
+        % Turn off supersampling
+        fprintf(fid, 'nvbb.sourceSuperSample=0\n');
+        
+        % Reduce the number of azimuthal angles per zenith angle to 4.  This
+        % will speed up dose calculation
+        fprintf(fid, 'nvbb.azimuths=4\n');
+
+        % Reduce fluence rate/steps to 1. This will also speed up dose 
+        % calculation
+        fprintf(fid, 'nvbb.fluenceXRate=1\n');
+        fprintf(fid, 'nvbb.fluenceZRate=1\n');
+        fprintf(fid, 'nvbb.fluenceXStep=1\n');
+        fprintf(fid, 'nvbb.fluenceZStep=1\n');
+    end
+    
     % Configure the dose calculator to write the resulting dose array to
     % the file dose.img (to be read back into MATLAB following execution)
     fprintf(fid, 'outfile=dose.img\n');
@@ -467,10 +503,22 @@ if exist('ssh2', 'var') && ~isempty(ssh2)
     Event('Secure copying file plan.img');
     ssh2 = scp_put(ssh2, 'plan.img', remotefolder, folder);
 
-    % Execute gpusadose in the remote server temporary directory
-    Event('Executing gpusadose on remote server');
-    ssh2 = ssh2_command(ssh2, ['cd ', remotefolder, ...
-        '; gpusadose -C dose.cfg']);
+    % If using gpusadose
+    if sadose == 0
+        
+        % Execute gpusadose in the remote server temporary directory
+        Event('Executing gpusadose on remote server');
+        ssh2 = ssh2_command(ssh2, ['cd ', remotefolder, ...
+            '; gpusadose -C dose.cfg']);
+    
+    % Otherwise, if using sadose
+    else
+        
+        % Execute gpusadose in the remote server temporary directory
+        Event('Executing sadose on remote server');
+        ssh2 = ssh2_command(ssh2, ['cd ', remotefolder, ...
+            '; sadose -C dose.cfg']);
+    end
     
     % Retrieve dose image to the temporary directory on the local computer
     Event('Retrieving calculated dose image from remote direcory');
@@ -478,14 +526,28 @@ if exist('ssh2', 'var') && ~isempty(ssh2)
     
 %% Otherwise execute gpusadose locally
 else
-    % First, initialize and clear GPU memory
-    Event('Clearing GPU memory');
-    gpuDevice(1);
+    % If using gpusadose
+    if sadose == 0
+        
+        % First, initialize and clear GPU memory
+        Event('Clearing GPU memory');
+        gpuDevice(1);
 
-    % cd to temporary folder, then call gpusadose
-    Event(['Executing gpusadose -C ', folder,'/dose.cfg']);
-    [status, cmdout] = system(['cd ', folder, '; gpusadose -C ./dose.cfg']);
+        % cd to temporary folder, then call gpusadose
+        Event(['Executing gpusadose -C ', folder,'/dose.cfg']);
+        [status, cmdout] = ...
+            system(['cd ', folder, '; gpusadose -C ./dose.cfg']);
 
+    % Otherwise, if using sadose
+    else
+        
+        % cd to temporary folder, then call sadose
+        Event(['Executing sadose -C ', folder,'/dose.cfg']);
+        [status, cmdout] = ...
+            system(['cd ', folder, '; sadose -C ./dose.cfg']);
+        
+    end
+    
     % If status is 0, the gpusadose call was successful.
     if status > 0
         

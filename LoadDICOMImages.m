@@ -120,7 +120,7 @@ for i = 1:length(names)
     
     % Append this slice's location to the sliceLocations vector
     sliceLocations(length(sliceLocations)+1) = ...
-        info.SliceLocation; %#ok<*AGROW>
+        -info.SliceLocation; %#ok<*AGROW>
     
     % Append this slice's image data to the images array
     images(size(images,1)+1,:,:) = dicomread(info); %#ok<*AGROW>
@@ -190,6 +190,9 @@ for i = 1:length(sliceLocations)
     image.data(:, :, i) = ...
         single(rot90(permute(images(indices(i), :, :), [2 3 1])));
 end
+
+% Flip the image in the second direction
+image.data = flipud(image.data);
 
 % Create dimensions structure field based on the daily image size
 image.dimensions = size(image.data);
