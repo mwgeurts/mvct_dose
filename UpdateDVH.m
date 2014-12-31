@@ -175,19 +175,19 @@ if nargin >= 4
         maxdose = max(max(max(referenceDose.data)));
     
         % Initialize array for reference DVH values with 1001 bins
-        referenceDVH = zeros(1001, size(referenceImage.structures, 2) + 1);
+        referenceDVH = zeros(1001, length(referenceImage.structures) + 1);
         
         % Defined the last column to be the x-axis, ranging from 0 to the
         % maximum dose
-        referenceDVH(:, size(referenceImage.structures, 2) + 1) = ...
+        referenceDVH(:, length(referenceImage.structures) + 1) = ...
             0:maxdose / 1000:maxdose;
 
         % Loop through each reference structure
-        for i = 1:size(referenceImage.structures, 2)
+        for i = 1:length(referenceImage.structures)
             
             % If valid reference dose data was passed
             if isfield(referenceDose, 'data') && ...
-                    size(referenceDose.data,1) > 0
+                    size(referenceDose.data, 1) > 0
                 
                 % Multiply the dose by the structure mask and reshape into
                 % a vector (adding 1e-6 is necessary to retain zero dose
@@ -201,7 +201,7 @@ if nargin >= 4
 
                 % Compute differential histogram
                 referenceDVH(:,i) = histc(data, referenceDVH(:, ...
-                    size(referenceImage.structures, 2) + 1));
+                    length(referenceImage.structures) + 1));
                 
                 % Compute cumulative histogram and invert
                 referenceDVH(:,i) = ...
@@ -232,13 +232,13 @@ end
 if nargin >= 6
     
     % If the dqaDose variable contains a valid data array
-    if isfield(dqaDose, 'data') && size(dqaDose.data,1) > 0
+    if isfield(dqaDose, 'data') && size(dqaDose.data, 1) > 0
         
         % If the image size, pixel size, or start differs between datasets, 
         % or a registration adjustment exists
-        if size(dqaDose.data,1) ~= size(dqaImage.data,1) ...
-                || size(dqaDose.data,2) ~= size(dqaImage.data,2) ...
-                || size(dqaDose.data,3) ~= size(dqaImage.data,3) ...
+        if size(dqaDose.data, 1) ~= size(dqaImage.data, 1) ...
+                || size(dqaDose.data, 2) ~= size(dqaImage.data, 2) ...
+                || size(dqaDose.data, 3) ~= size(dqaImage.data, 3) ...
                 || isequal(dqaDose.width, dqaImage.width) == 0 ...
                 || isequal(dqaDose.start, dqaImage.start) == 0
 
@@ -296,11 +296,11 @@ if nargin >= 6
         maxdose = max(max(max(dqaDose.data)));
 
         % Initialize array for DQA DVH values with 1001 bins
-        dqaDVH = zeros(1001, size(dqaImage.structures, 2) + 1);
+        dqaDVH = zeros(1001, length(dqaImage.structures) + 1);
         
         % Defined the last column to be the x-axis, ranging from 0 to the
         % maximum dose
-        dqaDVH(:, size(dqaImage.structures, 2) + 1) = ...
+        dqaDVH(:, length(dqaImage.structures) + 1) = ...
             0:maxdose/1000:maxdose;
 
         % Loop through each DQA structure
@@ -321,7 +321,7 @@ if nargin >= 6
 
                 % Compute differential histogram
                 dqaDVH(:,i) = histc(data, dqaDVH(:, ...
-                    size(dqaImage.structures, 2) + 1));
+                    length(dqaImage.structures) + 1));
                 
                 % Compute cumulative histogram and invert
                 dqaDVH(:,i) = flipud(cumsum(flipud(dqaDVH(:, i))));
@@ -354,7 +354,7 @@ axes(fig)
 first = true;
 
 % Loop through each structure 
-for i = 1:size(referenceImage.structures, 2)  
+for i = 1:length(referenceImage.structures)  
     
     % If the statistics display column is true/checked, plot the DVH
     if stats{i,2}
@@ -364,7 +364,7 @@ for i = 1:size(referenceImage.structures, 2)
             
             % Plot the reference dose as a solid line in the color
             % specified in the structures cell array
-            plot(referenceDVH(:, size(referenceImage.structures, 2) + 1), ...
+            plot(referenceDVH(:, length(referenceImage.structures) + 1), ...
                 referenceDVH(:,i), '-', 'Color', ...
                 referenceImage.structures{i}.color / 255);
            
@@ -384,7 +384,7 @@ for i = 1:size(referenceImage.structures, 2)
             
             % Plot the reference dose as a solid line in the color
             % specified in the structures cell array
-            plot(dqaDVH(:, size(dqaImage.structures, 2) + 1), ...
+            plot(dqaDVH(:, length(dqaImage.structures) + 1), ...
                 dqaDVH(:,i), '--', 'Color', ...
                 dqaImage.structures{i}.color / 255);
         end

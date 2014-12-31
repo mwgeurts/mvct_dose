@@ -99,10 +99,10 @@ if exist('dqaDVH', 'var') && ~isempty(dqaDVH)
     w = flipud(dqaDVH(:, size(dqaDVH, 2)));
 
     % Loop through each structure
-    for i = 1:size(stats,1)
+    for i = 1:size(stats, 1)
         % Remove unique values in DVH (interp1 fails with unique lookup 
         % values)
-        [u,v,~] = unique(flipud(dqaDVH(:,i)));
+        [u,v,~] = unique(flipud(dqaDVH(:, i)));
 
         % Interpolate DVH to Dx value 
         stats{i,5} = sprintf('%0.1f', interp1(u, w(v), ...

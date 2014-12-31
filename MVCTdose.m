@@ -1642,6 +1642,26 @@ Event('Calculate dose button pressed');
 % Start waitbar
 progress = waitbar(0, 'Calculating dose');
 
+%% Disable results
+% Disable DVH table
+set(handles.dvh_table, 'Visible', 'off');
+
+% Disable dose and DVH axes
+set(allchild(handles.dose_axes), 'visible', 'off'); 
+set(handles.dose_axes, 'visible', 'off');
+colorbar(handles.dose_axes, 'off');
+set(allchild(handles.dvh_axes), 'visible', 'off'); 
+set(handles.dvh_axes, 'visible', 'off');
+
+% Hide dose slider/TCS/alpha
+set(handles.dose_slider, 'visible', 'off');
+set(handles.tcs_button, 'visible', 'off');
+set(handles.alpha, 'visible', 'off');
+
+% Disable export buttons
+set(handles.dose_button, 'Enable', 'off');
+set(handles.dvh_button, 'Enable', 'off');
+
 %% Create Image Input
 % Retrieve IVDT data
 Event('Retrieving IVDT data');
@@ -1943,7 +1963,7 @@ waitbar(0.3, progress);
 
 %% Calculate and display dose
 % Calculate dose using image, plan, beam model directory, & SSH2 connection
-handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2);
+handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2); 
 
 % Update progress bar
 waitbar(0.7, progress, 'Updating results');
@@ -1989,13 +2009,18 @@ if isfield(handles, 'structures') && ~isempty(handles.structures)
     % Update Dx/Vx statistics
     set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
         get(handles.dvh_table, 'Data'), handles.dose.dvh));
+    
+    % Enable statistics table
+    set(handles.dvh_table, 'Visible', 'on');
+    
+    % Enable DVH export button
+    set(handles.dvh_button, 'Enable', 'on');
 end
 
 % Update progress bar
 waitbar(1.0, progress, 'Dose calculation completed');
 
-% Enable DVH and dose export buttons
-set(handles.dvh_button, 'Enable', 'on');
+% Enable dose export buttons
 set(handles.dose_button, 'Enable', 'on');
 
 % Close and delete progress handle
@@ -2026,9 +2051,9 @@ stats = get(hObject, 'Data');
 stats = UpdateDoseStatistics(stats);
 
 % Update dose plot if it is displayed
-if get(handles.dose_display, 'Value') > 1 && ...
-        strcmp(get(handles.dose_slider, 'visible'), 'on')
+if strcmp(get(handles.dose_slider, 'visible'), 'on')
     
+    % Update dose plot
     UpdateViewer(get(handles.dose_slider,'Value'), ...
         sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
 end
@@ -2356,6 +2381,9 @@ set(handles.struct_file, 'Enable', 'off');
 set(handles.struct_browse, 'Enable', 'off');
 handles.structures = [];
 
+% Clear stats table
+set(handles.dvh_table, 'Data', cell(20, 4));
+
 % Disable slice selection axes
 set(allchild(handles.slice_axes), 'visible', 'off'); 
 set(handles.slice_axes, 'visible', 'off');
@@ -2369,6 +2397,7 @@ set(handles.dvh_table, 'Visible', 'off');
 % Disable dose and DVH axes
 set(allchild(handles.dose_axes), 'visible', 'off'); 
 set(handles.dose_axes, 'visible', 'off');
+colorbar(handles.dose_axes, 'off');
 set(allchild(handles.dvh_axes), 'visible', 'off'); 
 set(handles.dvh_axes, 'visible', 'off');
 
@@ -2376,9 +2405,6 @@ set(handles.dvh_axes, 'visible', 'off');
 set(handles.dose_slider, 'visible', 'off');
 set(handles.tcs_button, 'visible', 'off');
 set(handles.alpha, 'visible', 'off');
-
-% Clear stats table
-set(handles.dvh_table, 'Data', cell(20, 4));
 
 % Disable export buttons
 set(handles.dose_button, 'Enable', 'off');
