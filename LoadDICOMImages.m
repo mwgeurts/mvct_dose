@@ -194,6 +194,10 @@ end
 % Flip the image in the second direction
 image.data = flipud(image.data);
 
+% Remove values less than zero (some DICOM images place voxels outside the
+% field of view to negative values)
+image.data = max(image.data, 0);
+
 % Create dimensions structure field based on the daily image size
 image.dimensions = size(image.data);
 
