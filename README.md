@@ -1,4 +1,131 @@
-mvct_dose
-=========
+## TomoTherapy Exit Detector Analysis
 
-TomoTherapy MVCT Dose Calculator
+by Mark Geurts <mark.w.geurts@gmail.com>
+<br>Copyright &copy; 2015, University of Wisconsin Board of Regents
+
+The TomoTherapy&reg; MVCT Dose Calculator Tool is a GUI based standalone application written in MATLAB that facilitates estimation of the dose delivered during Mega-Voltage CT (MVCT) acquisition on a [TomoTherapy](http://www.accuray.com) Treatment System. Users can load a DICOM CT and RT Structure Set or a patient archive CT and structure set as patient inputs, drag to select a scan length and pitch, input an Image Value to Density Table (IVDT), then select from a list of provided beam models and calculate dose.  The MVCT acquisition may be further modified by adjusting the MLC sinogram, beam output, gantry period, and jaw width to study customized scanning scenarios.  The resulting dose calculation and Dose Volume Histogram (DVH) are displayed and available for export.
+
+TomoTherapy is a registered trademark of Accuray Incorporated.
+
+## Contents
+
+* [Installation and Use](README.md#installation-and-use)
+* [Compatibility and Requirements](README.md#compatibility-and-requirements)
+* [Troubleshooting](README.md#troubleshooting)
+* [Default IVDT](README.md#default-ivdt)
+* [Loading Patient Archives](README.md#loading-patient-archives)
+* [Loading Structure Sets](README.md#loading-structure-sets)
+* [Beam Model Selection](README.md#beam-model-selection)
+* [Customized Sinograms](README.md#customized-sinograms)
+* [Exporting Results](README.md#exporting-results)
+  * [Dose Volume Histogram](README.md#dose-volume-histograms)
+  * [DICOM RT Dose Image](README.md#dicom-rt-dose-image)
+* [Third Party Statements](README.md#third-party-statements)
+
+## Installation and Use
+
+To install the TomoTherapy MVCT Dose Calculator Tool, copy all MATLAB .m and .fig files into a directory with read/write access. If using git, execute `git clone https://github.com/mwgeurts/mvct_dose`.  Then, create a folder (the default is `./GPU`) and copy each beam model into them. To change the location of the folder, edit the line `handles.modeldir = './GPU';` in the function `MVCTdose_OpeningFcn()`.
+
+Next, the TomoTherapy MVCT Dose Calculator Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using a remote server, open `MVCTdose_OpeningFcn()` and find the following lines (note each line is separated by several lines of comments and `Event()` calls in the actual file):
+
+```matlab
+addpath('../ssh2_v2_m1_r6/');
+ssh2 = ssh2_config('tomo-research','tomo','hi-art');
+```
+
+This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded/extracted and the `MVCTdose_OpeningFcn()` statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.
+
+Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
+
+To run this application, call `MVCTdose` from MATLAB.  Once the application interface loads, select browse under inputs to load the CT and structure set inputs. Then enter the remaining inputs and click "Calculate Dose".
+
+## Compatibility and Requirements
+
+This application has been validated using TomoTherapy version 4.2 and 5.0 patient archives on Macintosh OSX 10.10 (Yosemite) and MATLAB version 8.4 and 8.5.  Exported DICOM RT Dose images have been validated in MIM version 6.4.
+
+## Troubleshooting
+
+This application records key input parameters and results to a log.txt file using the `Event()` function. The log is the most important route to troubleshooting errors encountered by this software.  The author can also be contacted using the information above.  Refer to the license file for a full description of the limitations on liability when using or this software or its components.
+
+## Default IVDT
+
+This repository includes a default IVDT (ivdt.txt) that is loaded upon application startup.  To edit the location of this file, edit the line `fid = fopen('ivdt.txt', 'r');` in `MVCTdose_OpeningFcn()`.  This file may be modified to change the default IVDT so long as the following format is retained, where the CT numbers range from 0 to 4095 and the density values are in g/cm<sup>3</sup>. Each value must be separated by whitespace (space, \b or \t).  When displayed in the MVCT Dose Calculator Tool, the CT numbers are converted to Hounsfield Units (HU) by subtracting 1024.
+
+```
+calibration.ctNums=0 29 340 519 1027 1244 1465 1831 2226 4095
+calibration.densVals=0 0.001 0.29 0.46 1 1.153 1.335 1.561 1.824 4.59
+```
+
+When loading a TomoTherapy patient archive, the IVDT used by the plan is automatically loaded into the MVCT Dose Calculator Tool.  These values may be edited prior to dose calculation by selecting and modifying existing values or adding additional rows to the table.  The tool will automatically re-sort the table by HU value.  Prior to calculation, both the HU and density values must be in ascending order (a negative density slope is not permitted).
+
+## Loading Patient Archives
+
+To load a TomoTherapy patient archive, after clicking Browse under "Select Image Set" change the file type to Patient Archive (*.xml).  Then, navigate to and select the _patient.xml file in the patient archive.  The tool will scan the archive for all approved treatment plans, and if multiple are found, prompt the user to select which plan to load. The CT image, structure set, and IVDT will then be loaded from the treatment plan.
+
+Finally, all scheduled MVCT procedures for the selected plan will be parsed from the archive and populated in the Slice Selection dropdown menu on the application interface.  The procedures will be listed by the scan acquisition start and end IEC-Y values. Selecting one of these values from the dropdown menu will update the slice selection image to reflect the scan actually performed on that day.  In this manner, this tool may be used to estimate the actual dose delivered to a patient as a result of the slices selected by the radiation therapists.
+
+## Loading Structure Sets
+
+When loading structures, each structure is compared to a pre-loaded atlas (see `LoadAtlas()` and atlas.xml for more information).  Structures that match known exclusions (planning structures, etc) are not loaded. Structures that do not match any atlas names are still loaded and given an initial Dx value of 50%. The atlas also contains default Dx values for each structure.  To load all structures, edit the load flags in the atlas to 1.
+
+## Beam Model Selection
+
+As described above, multiple beam models may be loaded into the MVCT Dose Calculator Tool to enable the user to investigate different beam energies or other model-specific parameters. These files will be copied to the computation server along with the plan files at the time of program execution.  Each beam model must be contained within a unique folder under the model folder (`./GPU`) and contain the following beam model files:
+
+* dcom.header
+* lft.img
+* penumbra.img
+* kernel.img
+* fat.img
+
+## Customized Sinograms
+
+By default, the MVCT Dose Calculator Tool assumes the MVCT is acquired with all MLC leaves open.  However, customized MLC leaf pattern may be used for dose calculation.  To use a custom leaf pattern, select a beam model and click the radio button labelled "Custom Sinogram". Two inputs will become available: a file browser (to select the MLC sinogram) and projection rate.  
+
+The custom sinogram file must be a binary file containing 64 x n leaf open times, where n is the number of projections.  Each leaf open time can be single (32-bit) or double (64-bit), big or little endian, and must be between zero (leaf closed) and one (leaf open).  The recommended format is single little endian values. The projection rate value will determine the length of each projection, and the scan length/gantry period will determine the total number of projections needed.  
+
+If the provided sinogram contains fewer projections than what is needed based on the scan selection, the remaining projections will assume all leaves are closed.  If the provided sinogram contains more projections, the sinogram will be truncated based on the length needed to deliver the scan.
+
+## Exporting Results
+
+Following dose calculation, a dose viewer will appear allowing the user to slice through the transverse, coronal, or sagittal slices and view the dose distribution.  If structures are also loaded, a dose volume histogram will be plotted and a list of each structure will be provided along with Dx/Vx values.  The Dx values can be edited.  In addition, "Export DVH" and "Export Dose" buttons will become available to export the results.
+
+### Dose Volume Histogram
+
+The dose volume histogram can saved as a .csv file by clicking "Export DVH".  A window will appear prompting the user to select the file name and path to save the file.
+
+The first row of the DVH Excel file starts with a hash symbol (#) with the file name written in the second column.  The second row lists each structure, structure number (in parentheses), and structure volume (in cc) in 2 on. For all remaining rows, the normalized cumulative dose histogram is reported, with the first column containing the dose bin (in Gy) and each subsequent column containing the relative volume percentage for that dose.  The tool will always compute 1001 bins equally spaced between zero and the maximum dose.
+
+Finally, it should be noted that this tool currently does not consider partial voxels, and will therefore differ slightly from other treatment planning systems in volume or DVH calculation.
+
+### DICOM RT Dose Image
+
+The dose image can be saved as a DICOM RT Dose file by clicking "Export Dose". A window will appear prompting the user to select the file name and path to save the file.
+
+## Third Party Statements
+
+SSH/SFTP/SCP for Matlab (v2)
+<br>Copyright &copy; 2014, David S. Freedman
+<br>All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in
+  the documentation and/or other materials provided with the distribution
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
