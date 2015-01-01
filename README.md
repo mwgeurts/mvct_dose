@@ -70,7 +70,7 @@ When loading structures, each structure is compared to a pre-loaded atlas (see `
 
 ## Beam Model Selection
 
-As described above, multiple beam models may be loaded into the MVCT Dose Calculator Tool to enable the user to investigate different beam energies or other model-specific parameters. These files will be copied to the computation server along with the plan files at the time of program execution.  Each beam model must be contained within a unique folder under the model folder (`./GPU`) and contain the following beam model files:
+As described above, multiple beam models may be loaded into the MVCT Dose Calculator Tool to enable the user to investigate different beam energies or other model-specific parameters. These files will be copied to the computation server along with the plan files at the time of program execution.  Each beam model must be contained within a unique folder under the model folder and contain the following beam model files:
 
 * dcom.header
 * lft.img
