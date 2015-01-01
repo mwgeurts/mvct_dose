@@ -100,7 +100,56 @@ Finally, it should be noted that this tool currently does not consider partial v
 
 ### DICOM RT Dose Image
 
-The dose image can be saved as a DICOM RT Dose file by clicking "Export Dose". A window will appear prompting the user to select the file name and path to save the file.
+The dose image can be saved as a DICOM RT Dose file by clicking "Export Dose". A window will appear prompting the user to select the file name and path to save the file. The DICOM header is set using the following fields, followed by the 3D dose image as uint16 elements.
+
+| Tag ID | Tag Name | Value |
+|--------|----------|-------|
+| 0002,0001 | [OB] File Meta Information Version | 00\01 |
+| 0002,0010 | [UI] Transfer Syntax UID | 1.2.840.10008.1.2 |
+| 0002,0012 | [UI] Implementation Class UID | 1.2.40.0.13.1.1 |
+| 0002,0013 | [SH] Implementation Version Name | dcm4che-2.0 |
+| 0008,0005 | [CS] Specific Character Set | ISO_IR 100 |
+| 0002,0002 | [UI] Media Storage SOP Class UID | 1.2.840.10008.5.1.4.1.1.481.2 |
+| 0008,0016 | [UI] SOP Class UID | 1.2.840.10008.5.1.4.1.1.481.2 |
+| 0008,0060 | [CS] Modality | RTDOSE |
+| 0002,0003 | [UI] Media Storage SOP Instance UID | unique UID determined via `dicomuid` |
+| 0008,0018 | [UI] SOP Instance UID | same unique UID as above |
+| 0008,0022 | [DA] Acquisition Date | current date |
+| 0008,0032 | [TM] Acquisition Time | current time |
+| 0008,0012 | [DA] Instance Creation Date | current date |
+| 0008,0013 | [TM] Instance Creation Time | current time |
+| 0008,0008 | [CS] Image Type | ORIGINAL/PRIMARY/AXIAL |
+| 0008,0070 | [LO] Manufacturer | MATLAB `version` |
+| 0008,1090 | [LO] Manufacturer’s Model Name | WriteDICOMDose |
+| 0018,1020 | [LO] Software Version | WriteDICOMDose (1.0) `version` | 
+| 0008,103E | [LO] Series Description | Same series description as CT |
+| 0008,1140 | [SQ] Referenced Image Sequence | Class and instance UIDs of CT |
+| 0010,0010 | [PN] Patient’s Name | Name from CT or patient archive |
+| 0010,0020 | [LO] Patient ID | ID from CT or patient archive |
+| 0010,0030 | [DA] Patient’s Birth Date | Birth date from CT or patient archive |
+| 0010,0040 | [CS] Patient’s Sex | Sex from CT or patient archive |
+| 0010,1010 | [AS] Patient’s Age | Age from CT or patient archive |
+| 0018,0050 | [DS] Slice Thickness | IEC-Y thickness, in mm |
+| 0020,000D | [UI] Study Instance UID | Study UID of CT |
+| 0020,000E | [UI] Series Instance UID | Series UID of CT |
+| 0020,0032 | [DS] Image Position | Start coordinates, in mm |
+| 0020,0052 | [UI] Frame of Reference UID | FOR UID from CT |
+| 0020,1002 | [IS] Images in Acquisition | 1 |
+| 0028,0004 | [CS] Photometric Interpretation | MONOCHROME2 |
+| 0020,1041 | [DS] Slice Location | IEC-Y of first slice, in mm |
+| 0028,0008 | [IS] Number of Frames | Number of IEC-Y voxels |
+| 3004,000C | [DS] Grid Frame Offset Vector | IEC-Y values relative to first slice, in mm |
+| 0028,0010 | [US] Rows | Number of IEC-Z voxels |
+| 0028,0011 | [US] Columns | Number of IEC-X voxels |
+| 0028,0030 | [DS] Pixel Spacing | X/Z thickness, in mm |
+| 0028,0100 | [US] Bits Allocated | 16 |
+| 0028,0101 | [US] Bits Stored | 16 |
+| 0028,0102 | [US] High Bit | 15 |
+| 0028,0103 | [US] Pixel Representation | 0 |
+| 3004,0002 | [CS] Dose Units | GY |
+| 3004,0004 | [CS] Dose Type | PHYSICAL |
+| 3004,0014 | [CS] Tissue Heterogeneity Correction | ROI_OVERRIDE |
+| 3004,000E | [DS] Dose Grid Scaling | Conversion of image value (uint16) to dose (Gy) |
 
 ## Third Party Statements
 
