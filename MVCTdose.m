@@ -156,7 +156,7 @@ if ~strcmp(cmdout,'')
     % Log gpusadose version
     [~, str] = system('gpusadose -V');
     cellarr = textscan(str, '%s', 'delimiter', '\n');
-    Event(sprintf('Found %s at %s', char(cellarr{1}(1)), cmdout));
+    Event(sprintf('Found %s at %s', char(cellarr{1}(1)), cmdout));d
     
     % Clear temporary variables
     clear str cellarr;
@@ -1962,8 +1962,19 @@ fclose(fidw);
 waitbar(0.3, progress);
 
 %% Calculate and display dose
-% Calculate dose using image, plan, beam model directory, & SSH2 connection
-handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2); 
+% If an ssh2 connection is set (remote calculation)
+if isfield(handles, 'ssh2')
+    
+    % Calculate dose using image, plan, directory, & SSH2 connection
+    handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2); 
+  
+% Otherwise calculate dose locally
+else
+    
+    % Calculate dose using image, plan, & beam model directory
+    handles.dose = CalcDose(handles.image, plan, folder); 
+    
+end
 
 % Update progress bar
 waitbar(0.7, progress, 'Updating results');
