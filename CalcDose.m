@@ -116,7 +116,7 @@ end
 
 % Throw an error if the image registration pitch or yaw values are non-zero
 if plan.registration(1) ~= 0 || plan.registration(2) ~= 0
-    Event(['Error: dose calculation cannot handle pitch or yaw ', ...
+    Event(['Dose calculation cannot handle pitch or yaw ', ...
         'corrections at this time'], 'ERROR');
 end
 
@@ -279,8 +279,8 @@ if nargin >= 2
         % Turn off supersampling
         fprintf(fid, 'nvbb.sourceSuperSample=0\n');
         
-        % Reduce the number of azimuthal angles per zenith angle to 4.  This
-        % will speed up dose calculation
+        % Reduce the number of azimuthal angles per zenith angle to 4.  
+        % This will speed up dose calculation
         fprintf(fid, 'nvbb.azimuths=4\n');
 
         % Reduce fluence rate/steps to 1. This will also speed up dose 
