@@ -2019,7 +2019,7 @@ if isfield(handles, 'structures') && ~isempty(handles.structures)
 
     % Update Dx/Vx statistics
     set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-        get(handles.dvh_table, 'Data'), handles.dose.dvh));
+        get(handles.dvh_table, 'Data'), [], handles.dose.dvh));
     
     % Enable statistics table
     set(handles.dvh_table, 'Visible', 'on');
@@ -2042,7 +2042,7 @@ clear progress;
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dvh_table_CellEditCallback(hObject, ~, handles)
+function dvh_table_CellEditCallback(hObject, eventdata, handles)
 % hObject    handle to dvh_table (see GCBO)
 % eventdata  structure with the following fields 
 %       (see MATLAB.UI.CONTROL.TABLE)
@@ -2058,19 +2058,43 @@ function dvh_table_CellEditCallback(hObject, ~, handles)
 % Get current data
 stats = get(hObject, 'Data');
 
-% Update Dx/Vx statistics
-stats = UpdateDoseStatistics(stats);
-
-% Update dose plot if it is displayed
-if strcmp(get(handles.dose_slider, 'visible'), 'on')
+% Verify edited Dx value is a number or empty
+if eventdata.Indices(2) == 3 && isnan(str2double(...
+        stats{eventdata.Indices(1), eventdata.Indices(2)})) && ...
+        ~isempty(stats{eventdata.Indices(1), eventdata.Indices(2)})
     
-    % Update dose plot
-    UpdateViewer(get(handles.dose_slider,'Value'), ...
-        sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
-end
+    % Warn user
+    Event(sprintf(['Dx value "%s" is not a number, reverting to previous ', ...
+        'value'], stats{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
+    
+    % Revert value to previous
+    stats{eventdata.Indices(1), eventdata.Indices(2)} = ...
+        eventdata.PreviousData;
 
-% Update DVH plot
-UpdateDVH(stats);
+% Otherwise, if Dx was changed
+elseif eventdata.Indices(2) == 3
+    
+    % Update edited Dx/Vx statistic
+    stats = UpdateDoseStatistics(stats, eventdata.Indices);
+
+% Otherwise, if display value was changed
+elseif eventdata.Indices(2) == 2
+    
+    % Update dose plot if it is displayed
+    if strcmp(get(handles.dose_slider, 'visible'), 'on')
+
+        % Update dose plot
+        UpdateViewer(get(handles.dose_slider,'Value'), ...
+            sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
+    end
+
+    % Update DVH plot if it is displayed
+    if strcmp(get(handles.dvh_axes, 'visible'), 'on')
+        
+        % Update DVH plot
+        UpdateDVH(stats); 
+    end
+end
 
 % Set new table data
 set(hObject, 'Data', stats);
