@@ -2439,27 +2439,27 @@ function figure1_SizeChangedFcn(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% % Set units to pixels
-% set(hObject,'Units','pixels') 
-% 
-% % Get table width
-% pos = get(handles.ivdt_table, 'Position') .* ...
-%     get(handles.ivdt_table, 'Position') .* ...
-%     get(hObject, 'Position');
-% 
-% % Update column widths to scale to new table size
-% set(handles.ivdt_table, 'ColumnWidth', ...
-%     {floor(0.5*pos(3)) - 5 floor(0.5*pos(3)) - 5});
-% 
-% % Get table width
-% pos = get(handles.dvh_table, 'Position') .* ...
-%     get(handles.dvh_table, 'Position') .* ...
-%     get(hObject, 'Position');
-% 
-% % Update column widths to scale to new table size
-% set(handles.dvh_table, 'ColumnWidth', ...
-%     {floor(0.46*pos(3)) - 46 20 floor(0.18*pos(3)) ...
-%     floor(0.18*pos(3))});
-% 
-% % Clear temporary variables
-% clear pos;
+% Set units to pixels
+set(hObject, 'Units', 'pixels');
+
+% Get table width
+pos = get(handles.ivdt_table, 'Position') .* ...
+    get(handles.uipanel8, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.ivdt_table, 'ColumnWidth', ...
+    {floor(0.5*pos(3)) - 10 floor(0.5*pos(3)) - 11});
+
+% Get table width
+pos = get(handles.dvh_table, 'Position') .* ...
+    get(handles.uipanel5, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.dvh_table, 'ColumnWidth', ...
+    {floor(0.60*pos(3)) - 39 20 floor(0.2*pos(3)) ...
+    floor(0.2*pos(3))});
+
+% Clear temporary variables
+clear pos;
