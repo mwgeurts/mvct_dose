@@ -75,7 +75,7 @@ info.ImageType = 'ORIGINAL/PRIMARY/AXIAL';
 % Specify manufacturer, model, and software version
 info.Manufacturer = ['MATLAB ', version];
 info.ManufacturerModelName = 'WriteDICOMDose';
-info.SoftwareVersion = ['WriteDICOMDose (1.0) ', version];
+info.SoftwareVersion = '1.0';
 
 % Specify series description (optional)
 if nargin == 3 && isfield(varargin{3}, 'seriesDescription')
@@ -187,7 +187,7 @@ else
 end
 
 % Specify image position (in mm)
-info.ImagePositionPatient = varargin{1}.start' * 10; % mm
+info.ImagePositionPatient = varargin{1}.start' .* [1;1;-1] * 10; % mm
 
 % Specify frame of reference UID
 if nargin == 3 && isfield(varargin{3}, 'frameRefUID')
@@ -208,15 +208,15 @@ info.SliceLocation = -varargin{1}.start(3) * 10; % mm
 
 % Specify number of frames and grid frame offset vector (in mm)
 info.NumberOfFrames = size(varargin{1}.data, 3);
-info.GridFrameOffsetVector = 0:size(varargin{1}.data, 3)-1 * ...
-    -varargin{1}.width * 10; % mm
+info.GridFrameOffsetVector = (0:size(varargin{1}.data, 3) - 1) * ...
+    -varargin{1}.width(3) * 10; % mm
 
 % Specify number of rows/columns
 info.Rows = size(varargin{1}.data, 1);
 info.Columns = size(varargin{1}.data, 2);
 
 % Specify pixel spacing (in mm)
-info.PixelSpacing = [varargin{1}.width(1); varargin{1}.width(2)]; % mm
+info.PixelSpacing = [varargin{1}.width(1); varargin{1}.width(2)] * 10; % mm
 
 % Specify bit information
 info.BitsAllocated = 16;
@@ -233,9 +233,11 @@ info.TissueHeterogeneityCorrection = 'ROI_OVERRIDE';
 info.DoseGridScaling = max(max(max(varargin{1}.data))) / 65535;
 
 % Write DICOM file using dicomwrite()
-dicomwrite(uint16(varargin{1}.data/info.DoseGridScaling), ...
-    varargin{2}, info, 'CompressionMode', 'None', 'CreateMode', 'Copy', ...
-    'Endian', 'Little', 'MultiframeSingleFile', true);
+dicomwrite(reshape(rot90(uint16(varargin{1}.data/info.DoseGridScaling), 3), ...
+    [size(varargin{1}.data, 1) size(varargin{1}.data, 2) ...
+    1 size(varargin{1}.data, 3)]), varargin{2}, info, 'CompressionMode', ...
+    'None', 'CreateMode', 'Copy', 'Endian', 'ieee-le', ...
+    'MultiframeSingleFile', true);
 
 % Log completion of function
 Event(sprintf(['DICOM RTDOSE export completed successfully in ', ...
