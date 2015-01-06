@@ -146,7 +146,6 @@ Event(['DICOM image type identified as ', image.type]);
 % Retrieve start voxel coordinates from DICOM header, in cm
 image.start(1) = info.ImagePositionPatient(1) / 10;
 image.start(2) = info.ImagePositionPatient(2) / 10;
-image.start(3) = min(info.ImagePositionPatient(3)) / 10;
 
 % Retrieve x/y voxel widths from DICOM header, in cm
 image.width(1) = info.PixelSpacing(1) / 10;
@@ -161,12 +160,18 @@ if info.ImageOrientationPatient(1) == 1
     % Sort sliceLocations vector in ascending order
     [~, indices] = sort(sliceLocations, 'ascend');
     
+    % Store start voxel IEC-Y coordinate, in cm
+    image.start(3) = min(sliceLocations) / 10;
+    
 % Otherwise, if the patient is Feet First (currently not supported)
 elseif info.ImageOrientationPatient(1) == -1
     
     %Event('Patient position identified as Feet First');
     %[~,indices] = sort(sliceLocations, 'descend');
 
+    % Store start voxel IEC-Y coordinate, in cm
+    image.start(3) = min(sliceLocations) / 10;
+    
     % Throw an error as the image type is not currently supported/tested
     Event('Feet first data sets are not currently supported', 'ERROR');
 
@@ -190,9 +195,6 @@ for i = 1:length(sliceLocations)
     image.data(:, :, i) = ...
         single(rot90(permute(images(indices(i), :, :), [2 3 1])));
 end
-
-% Flip the image in the second direction
-image.data = flipud(image.data);
 
 % Remove values less than zero (some DICOM images place voxels outside the
 % field of view to negative values)
