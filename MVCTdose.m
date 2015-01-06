@@ -726,6 +726,12 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
     if isfield(handles, 'image') && isfield(handles.image, 'data') && ...
             size(handles.image.data, 3) > 0
         
+        % Retrieve current handle
+        api = iptgetapi(handles.selector);
+ 
+        % Retrieve current values
+        pos = api.getPosition();
+        
         % Set slice to center of dataset
         slice = floor(handles.image.dimensions(1)/2);
     
@@ -790,9 +796,23 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
         % coordinates (based on imref2d above) and the current mouseover 
         % location
         impixelinfo;
+        
+        % Create interactive slice selector line to allow user to select  
+        % slice ranges, defaulting to all slices
+        handles.selector = imdistline(handles.slice_axes, pos(:,1), ...
+            pos(:,2));
+
+        % Retrieve handle to slice selector API
+        api = iptgetapi(handles.selector);
+
+        % Constrain line to only resize horizontally, and only to the upper 
+        % and lower extent of the image using drag constraint function
+        fcn = @(pos) [max(start(1), pos(1,1)) 0; ...
+            min(start(1) + size(imageA, 2) * width(1), pos(2,1)) 0];
+        api.setDragConstraintFcn(fcn);
 
         % Clear temporary variables
-        clear slice width start stats i B k;
+        clear slice width start stats i B k fcn api pos;
     end
     
 % Otherwise no file was selected
@@ -1560,7 +1580,7 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
     handles.image.seriesDescription = 'TomoTherapy MVCT Calculated Dose';
     
     % Execute WriteDICOMDose
-    WriteDICOMDose(handles.image, handles.dose, fullfile(path, name));
+    WriteDICOMDose(handles.dose, fullfile(path, name), handles.image);
     
 % Otherwise no file was selected
 else
@@ -1587,7 +1607,13 @@ if get(hObject, 'Value') > 1
     % Set field size value
     set(handles.jaw, 'String', sprintf('%0.2g', ...
         sum(abs(handles.fieldsizes(get(hObject, 'Value') - 1, :)))));
+    
+    % Verify new data
+    handles = checkCalculateInputs(handles);
 end
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function jaw_menu_CreateFcn(hObject, ~, ~)
