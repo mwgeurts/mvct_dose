@@ -412,6 +412,25 @@ if iscell(name) || sum(name ~= 0)
         names = name;
     end
     
+    % Disable DVH table
+    set(handles.dvh_table, 'Visible', 'off');
+
+    % Disable dose and DVH axes
+    set(allchild(handles.dose_axes), 'visible', 'off'); 
+    set(handles.dose_axes, 'visible', 'off');
+    colorbar(handles.dose_axes, 'off');
+    set(allchild(handles.dvh_axes), 'visible', 'off'); 
+    set(handles.dvh_axes, 'visible', 'off');
+
+    % Hide dose slider/TCS/alpha
+    set(handles.dose_slider, 'visible', 'off');
+    set(handles.tcs_button, 'visible', 'off');
+    set(handles.alpha, 'visible', 'off');
+
+    % Disable export buttons
+    set(handles.dose_button, 'Enable', 'off');
+    set(handles.dvh_button, 'Enable', 'off');
+
     % Search for an xml extension
     s = regexpi(names{1}, '.xml$');
 
@@ -713,6 +732,25 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
     % Update default path
     handles.path = path;
     Event(['Default file path updated to ', path]);
+    
+    % Disable DVH table
+    set(handles.dvh_table, 'Visible', 'off');
+
+    % Disable dose and DVH axes
+    set(allchild(handles.dose_axes), 'visible', 'off'); 
+    set(handles.dose_axes, 'visible', 'off');
+    colorbar(handles.dose_axes, 'off');
+    set(allchild(handles.dvh_axes), 'visible', 'off'); 
+    set(handles.dvh_axes, 'visible', 'off');
+
+    % Hide dose slider/TCS/alpha
+    set(handles.dose_slider, 'visible', 'off');
+    set(handles.tcs_button, 'visible', 'off');
+    set(handles.alpha, 'visible', 'off');
+
+    % Disable export buttons
+    set(handles.dose_button, 'Enable', 'off');
+    set(handles.dvh_button, 'Enable', 'off');
     
     % Load DICOM structure set
     handles.structures = LoadDICOMStructures(path, name, handles.image, ...
