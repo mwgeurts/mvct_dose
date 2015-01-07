@@ -651,9 +651,9 @@ if iscell(name) || sum(name ~= 0)
     % Hide the x/y axis on the images
     axis off;
     
-    % Start the POI tool, which automatically diplays the x/y coordinates
-    % (based on imref2d above) and the current mouseover location
-    impixelinfo;
+    % Disallow zoom on slice selector
+    h = zoom;
+    setAllowAxesZoom(h, handles.slice_axes, false);
 
     % Create interactive slice selector line to allow user to select slice 
     % ranges, defaulting to all slices
@@ -666,12 +666,12 @@ if iscell(name) || sum(name ~= 0)
     
     % Constrain line to only resize horizontally, and only to the upper and
     % lower extent of the image using drag constraint function
-    fcn = @(pos) [max(start(1), pos(1,1)) 0; ...
-        min(start(1) + size(imageA, 2) * width(1), pos(2,1)) 0];
+    fcn = @(pos) [max(start(1), min(pos(:,1))) 0; ...
+            min(start(1) + size(imageA, 2) * width(1), max(pos(:,1))) 0];
     api.setDragConstraintFcn(fcn);
     
     % Clear temporary variable
-    clear s i j k name names path sag width start reference slice B ...
+    clear h s i j k name names path sag width start reference slice B ...
         imageA fcn api;
     
     % Log completion of slice selection load
@@ -829,11 +829,10 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
         
         % Hide the x/y axis on the images
         axis off;
-
-        % Start the POI tool, which automatically diplays the x/y 
-        % coordinates (based on imref2d above) and the current mouseover 
-        % location
-        impixelinfo;
+        
+        % Disallow zoom on slice selector
+        h = zoom;
+        setAllowAxesZoom(h, handles.slice_axes, false);
         
         % Create interactive slice selector line to allow user to select  
         % slice ranges, defaulting to all slices
@@ -845,12 +844,12 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
 
         % Constrain line to only resize horizontally, and only to the upper 
         % and lower extent of the image using drag constraint function
-        fcn = @(pos) [max(start(1), pos(1,1)) 0; ...
-            min(start(1) + size(imageA, 2) * width(1), pos(2,1)) 0];
+        fcn = @(pos) [max(start(1), min(pos(:,1))) 0; ...
+            min(start(1) + size(imageA, 2) * width(1), max(pos(:,1))) 0];
         api.setDragConstraintFcn(fcn);
 
         % Clear temporary variables
-        clear slice width start stats i B k fcn api pos;
+        clear h slice width start stats i B k fcn api pos;
     end
     
 % Otherwise no file was selected
@@ -1813,7 +1812,7 @@ Event(sprintf('MVCT scan start position set to %g cm', max(pos(1,1), ...
 k = size(plan.events, 1) + 1;
 plan.events{k,1} = 0;
 plan.events{k,2} = 'isoZ';
-plan.events{k,3} = max(pos(1,1), pos(2,1));
+plan.events{k,3} = min(pos(1,1), pos(2,1));
 
 % Update progress bar
 waitbar(0.15, progress);
@@ -1834,7 +1833,7 @@ Event(sprintf('Couch velocity set to %g cm/sec', ...
 k = size(plan.events, 1) + 1;
 plan.events{k,1} = 0;
 plan.events{k,2} = 'isoZRate';
-plan.events{k,3} = -str2double(get(handles.pitch, 'String')) / ...
+plan.events{k,3} = str2double(get(handles.pitch, 'String')) / ...
     str2double(get(handles.period, 'String')) * plan.scale;
 
 % Add jawBack and jawFront based on UI value, assuming beam is symmetric
@@ -1916,8 +1915,8 @@ if get(handles.mlc_radio_b, 'Value') == 1
     if size(handles.sinogram, 2) < ceil(totalTau)
         
         % Warn user that additional closed projections will be used
-        Event(sprintf('Custom sinogram is shorter than need by %i ', ...
-            'projections, and will be extended with all closed leaves', ...
+        Event(sprintf(['Custom sinogram is shorter than need by %i ', ...
+            'projections, and will be extended with all closed leaves'], ...
             ceil(totalTau) - size(handles.sinogram, 2)), 'WARN');
         
         % Initialize empty plan sinogram
@@ -1930,8 +1929,8 @@ if get(handles.mlc_radio_b, 'Value') == 1
     elseif size(handles.sinogram, 2) > ceil(totalTau)
         
         % Warn user that not all of sinogram will be used
-        Event(sprintf('Custom sinogram is larger than need by %i ', ...
-            'projections, which will be discarded for dose calculation', ...
+        Event(sprintf(['Custom sinogram is larger than need by %i ', ...
+            'projections, which will be discarded for dose calculation'], ...
             size(handles.sinogram, 2) - ceil(totalTau)), 'WARN');
         
         % Fill with custom sinogram
@@ -2537,7 +2536,7 @@ pos = get(handles.ivdt_table, 'Position') .* ...
 
 % Update column widths to scale to new table size
 set(handles.ivdt_table, 'ColumnWidth', ...
-    {floor(0.5*pos(3)) - 10 floor(0.5*pos(3)) - 11});
+    {floor(0.5*pos(3)) - 11 floor(0.5*pos(3)) - 11});
 
 % Get table width
 pos = get(handles.dvh_table, 'Position') .* ...
