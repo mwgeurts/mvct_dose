@@ -315,14 +315,11 @@ hold off;
 
 %% Finalize figure
 % Default zoom
-zoom(1.5);
+zoom(1.0);
+% zoom on;
 
 % Display the x/y axis on the images
 axis off;
-
-% Start the POI tool, which automatically diplays the x/y coordinates
-% (based on imref2d above) and the current mouseover location
-impixelinfo;
 
 % Clear temporary variables
 clear image width start;
