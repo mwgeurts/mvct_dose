@@ -118,15 +118,15 @@ if isfield(varargin{2}, 'data') && size(varargin{2}.data, 1) > 0
     end
     
     % Initialize array for reference DVH values with 1001 bins
-    dvh = zeros(1001, size(varargin{1}.structures, 2) + 1);
+    dvh = zeros(1001, length(varargin{1}.structures) + 1);
 
     % Defined the last column to be the x-axis, ranging from 0 to the
     % maximum dose
-    dvh(:, size(varargin{1}.structures, 2) + 1) = ...
+    dvh(:, length(varargin{1}.structures) + 1) = ...
         0:maxdose / 1000:maxdose;
 
     % Loop through each reference structure
-    for i = 1:size(varargin{1}.structures, 2)
+    for i = 1:length(varargin{1}.structures)
 
         % If valid reference dose data was passed
         if isfield(varargin{2}, 'data') && ...
@@ -144,7 +144,7 @@ if isfield(varargin{2}, 'data') && size(varargin{2}.data, 1) > 0
 
             % Compute differential histogram
             dvh(:,i) = histc(data, dvh(:, ...
-                size(varargin{1}.structures, 2) + 1));
+                length(varargin{1}.structures) + 1));
 
             % Compute cumulative histogram and invert
             dvh(:,i) = ...
@@ -193,7 +193,7 @@ if nargin == 3
         fprintf(fid, '#,%s\n', strcat(file, ext));
         
         % Write the structure names and volumes in the second row
-        for i = 1:size(varargin{1}.structures, 2)
+        for i = 1:length(varargin{1}.structures)
             fprintf(fid, ',%s (%i)(volume: %0.2f)', ...
                 varargin{1}.structures{i}.name, i, ...
                 varargin{1}.structures{i}.volume); 
