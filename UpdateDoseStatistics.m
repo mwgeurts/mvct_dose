@@ -93,11 +93,15 @@ if exist('referenceDVH', 'var') && ~isempty(referenceDVH) && ...
             [u, v, ~] = unique(flipud(referenceDVH(:, i)));
 
             % Interpolate DVH to Dx value 
-            stats{i,4} = sprintf('%0.1f', interp1(u, w(v), ...
-                str2double(stats{i,3}), 'linear'));
-
+            x = interp1(u, w(v), str2double(stats{i,3}), 'linear');
+            if x > 1
+                stats{i,4} = sprintf('%0.1f', x);
+            else
+                stats{i,4} = sprintf('%0.3f', x);
+            end
+            
             % Clear temporary variables
-            clear u v;
+            clear u v x;
         end
     end
 
