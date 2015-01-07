@@ -334,16 +334,23 @@ for i = 1:n
     structures{i}.volume = sum(sum(sum(structures{i}.mask))) * ...
         prod(varargin{3}.width);
     
+    % Flip the structure mask in the first dimension
+    structures{i}.mask = fliplr(structures{i}.mask);
+    
     % Check if at least one voxel in the mask was set to true
     if max(max(max(structures{i}.mask))) == 0
+        
         % If not, warn the user that the mask is empty
         Event(['Structure ', structures{i}.name, ...
             ' is less than one voxel.'], 'WARN');
+        
+        % Clear structure from return variable
+        structures{i} = [];
     end
-    
-    % Flip the structure mask in the first dimension
-    structures{i}.mask = fliplr(structures{i}.mask);
 end
+
+% Remove empty structure fields
+structures = structures(~cellfun('isempty', structures));
 
 % Clear temporary variables
 clear n doc factory xpath expression nodeList subNode numpoints points ...

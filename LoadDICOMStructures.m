@@ -209,7 +209,7 @@ for item = fieldnames(info.ROIContourSequence)'
                 slice = interp1(varargin{3}.start(3):varargin{3}.width(3):...
                     varargin{3}.start(3) + (varargin{3}.dimensions(3) - 1) ...
                     * varargin{3}.width(3), 1:varargin{3}.dimensions(3), ...
-                    -points(1,3), 'nearest', 0);
+                    points(1,3), 'nearest', 0);
                 
                 % If the slice index is within the reference image
                 if slice ~= 0
@@ -252,6 +252,9 @@ for item = fieldnames(info.ROIContourSequence)'
         structures{n}.volume = sum(sum(sum(structures{n}.mask))) * ...
             prod(varargin{3}.width);
 
+        % Flip the structure mask in the third dimension
+        structures{n}.mask = flip(structures{n}.mask, 3);
+        
         % Check if at least one voxel in the mask was set to true
         if max(max(max(structures{n}.mask))) == 0
             

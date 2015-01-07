@@ -120,7 +120,7 @@ for i = 1:length(names)
     
     % Append this slice's location to the sliceLocations vector
     sliceLocations(length(sliceLocations)+1) = ...
-        -info.SliceLocation; %#ok<*AGROW>
+        info.ImagePositionPatient(3); %#ok<*AGROW>
     
     % Append this slice's image data to the images array
     images(size(images,1)+1,:,:) = dicomread(info); %#ok<*AGROW>
@@ -157,8 +157,8 @@ if info.ImageOrientationPatient(1) == 1
     % Log orientation
     Event('Patient position identified as Head First');
 
-    % Sort sliceLocations vector in ascending order
-    [~, indices] = sort(sliceLocations, 'ascend');
+    % Sort sliceLocations vector in descending order
+    [~, indices] = sort(sliceLocations, 'descend');
     
     % Store start voxel IEC-Y coordinate, in cm
     image.start(3) = min(sliceLocations) / 10;
@@ -167,7 +167,7 @@ if info.ImageOrientationPatient(1) == 1
 elseif info.ImageOrientationPatient(1) == -1
     
     %Event('Patient position identified as Feet First');
-    %[~,indices] = sort(sliceLocations, 'descend');
+    %[~,indices] = sort(sliceLocations, 'ascend');
 
     % Store start voxel IEC-Y coordinate, in cm
     image.start(3) = min(sliceLocations) / 10;

@@ -94,7 +94,7 @@ end
 % resolution following calculation.  downsample must be an even divisor of
 % the CT dimensions (1, 2, 4, etc).  Dose calculation is known to fail for
 % high resolution images sets (i.e., 512x512) due to memory issues.
-if numel(image.data) >= 4e10
+if numel(image.data) >= 4e7
     downsample = 2;
 else
     downsample = 1;

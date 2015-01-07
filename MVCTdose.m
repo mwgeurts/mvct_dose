@@ -446,7 +446,8 @@ if iscell(name) || sum(name ~= 0)
         
         % If current structure set FOR UID does not match image
         if isfield(handles, 'structures') && ~isempty(handles.structures)
-            if ~strcmp(handles.structures{1}.frameRefUID, ...
+            if ~isfield(handles.structures{1}, 'frameRefUID') || ...
+                    ~strcmp(handles.structures{1}.frameRefUID, ...
                     handles.image.frameRefUID)
                 
                 % Log event
@@ -488,9 +489,11 @@ if iscell(name) || sum(name ~= 0)
             
             % Prompt user to select plan
             Event('Opening UI for user to select image set');
+            n = cell2mat(scans);
             [s, v] = listdlg('PromptString', ...
                 'Multiple plans were found. Select a plan to load:', ...
-                'SelectionMode', 'ListString', {scans.planName});
+                'SelectionMode', 'single', 'ListString', {n.planName}, ...
+                'ListSize', [300 100]);
             
             % If no plan was selected, throw an error
             if v == 0
@@ -498,7 +501,7 @@ if iscell(name) || sum(name ~= 0)
             end
             
             % Clear temporary variable
-            clear v;
+            clear v n;
         end
         
         % Load image 
