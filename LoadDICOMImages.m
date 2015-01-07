@@ -200,6 +200,9 @@ end
 % field of view to negative values)
 image.data = max(image.data, 0);
 
+% Flip images in IEC-X direction
+image.data = flip(image.data, 1);
+
 % Create dimensions structure field based on the daily image size
 image.dimensions = size(image.data);
 
