@@ -48,6 +48,9 @@ image.frameRefUID = '';
 image.instanceUIDs = cell(0);
 image.patientName = '';
 image.patientID = '';
+image.patientBirthDate = '';
+image.patientSex = '';
+image.patientAge = '';
 image.width(3) = 0;
 
 % Initialize empty 3D array for images and vector of slice locations
@@ -88,8 +91,21 @@ for i = 1:length(names)
         image.studyUID = info.StudyInstanceUID;
         image.seriesUID = info.SeriesInstanceUID;
         image.frameRefUID = info.FrameOfReferenceUID;
-        image.patientName = info.PatientName;
-        image.patientID = info.PatientID;
+        if isfield(info, 'PatientName')
+            image.patientName = info.PatientName;
+        end
+        if isfield(info, 'PatientID')
+            image.patientID = info.PatientID;
+        end
+        if isfield(info, 'PatientBirthDate')
+            image.patientBirthDate = info.PatientBirthDate;
+        end
+        if isfield(info, 'PatientSex')
+            image.patientSex = info.PatientSex;
+        end
+        if isfield(info, 'PatientAge')
+            image.patientAge = info.PatientAge;
+        end
         image.width(3) = info.SliceThickness / 10; % cm
         
     % Otherwise, if this file's study UID does not match the others,

@@ -48,6 +48,82 @@ factory = XPathFactory.newInstance;
 % Initialize a new xpath to the variable xpath
 xpath = factory.newXPath;
 
+%% Load patient demographics
+% Search for patient XML object patientName
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientName');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+% If a UID was found
+if nodeList.getLength > 0
+
+    % Store the first returned value
+    subnode = nodeList.item(0);
+    
+    % Set patient name
+    referenceImage.patientName = char(subnode.getFirstChild.getNodeValue);
+else
+
+    % Otherwise, warn the user that patient info wasn't found
+    Event('Patient demographics not found. This archive may be invalid.', ...
+        'WARN');
+end
+
+% Search for patient XML object patientID
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientID');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+% If a UID was found
+if nodeList.getLength > 0
+
+    % Store the first returned value
+    subnode = nodeList.item(0);
+    
+    % Set patient ID
+    referenceImage.patientID = char(subnode.getFirstChild.getNodeValue);
+end
+
+% Search for patient XML object patientBirthDate
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientBirthDate');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+% If a UID was found
+if nodeList.getLength > 0
+
+    % Store the first returned value
+    subnode = nodeList.item(0);
+    
+    % Set patient birth date
+    referenceImage.patientBirthDate = ...
+        char(subnode.getFirstChild.getNodeValue);
+end
+
+% Search for patient XML object patientGender
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientGender');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+% If a UID was found
+if nodeList.getLength > 0
+
+    % Store the first returned value
+    subnode = nodeList.item(0);
+    
+    % Set patient sex
+    referenceImage.patientSex = char(subnode.getFirstChild.getNodeValue);
+end
+
+%% Load plan info
 % Declare a new xpath search expression.  Search for all plans
 expression = ...
     xpath.compile('//fullPlanDataArray/fullPlanDataArray');
@@ -70,9 +146,11 @@ for i = 1:nodeList.getLength
     
     % If a UID was found
     if subnodeList.getLength > 0
+        
         % Store the first returned value
         subnode = subnodeList.item(0);
     else
+        
         % Otherwise, continue to next result
         continue
     end
@@ -139,6 +217,7 @@ for i = 1:nodeList.getLength
 
     % Loop through the images
     for j = 1:subnodeList.getLength
+        
         % Retrieve handle to this image
         subnode = subnodeList.item(j-1);
 
@@ -331,11 +410,11 @@ end
 
 %% Load the planned image array
 % Open read file handle to binary image
-fid = fopen(referenceImage.filename,'r','b');
+fid = fopen(referenceImage.filename, 'r', 'b');
 
 % Read in and store unsigned int binary data, reshaping by image dimensions
 referenceImage.data = single(reshape(fread(fid, referenceImage.dimensions(1) * ...
-    referenceImage.dimensions(2) * referenceImage.dimensions(3),'uint16'), ...
+    referenceImage.dimensions(2) * referenceImage.dimensions(3), 'uint16'), ...
     referenceImage.dimensions(1), referenceImage.dimensions(2), ...
     referenceImage.dimensions(3)));
 
@@ -354,6 +433,5 @@ Event(sprintf(['Reference binary image loaded successfully in %0.3f ', ...
 
 % Catch errors, log, and rethrow
 catch err
-    % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end
