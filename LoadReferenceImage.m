@@ -193,19 +193,40 @@ for i = 1:nodeList.getLength
     referenceImage.structureSetUID = ...
         char(subnode.getFirstChild.getNodeValue);
 
-    %% Load couch checksum
+    %% Load couch checksum and insertion position
     % Search for procedure XML object couchChecksum
     subexpression = xpath.compile('plan/couchChecksum');
 
     % Evaluate xpath expression and retrieve the results
     subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
 
-    % Store the first returned value
-    subnode = subnodeList.item(0);
+    % If a couch checksum was found
+    if subnodeList.getLength > 0
+        
+        % Store the first returned value
+        subnode = subnodeList.item(0);
 
-    % Save the couch checksum to return structure as char array
-    referenceImage.couchChecksum = ...
-        char(subnode.getFirstChild.getNodeValue);
+        % Save the couch checksum to return structure as char array
+        referenceImage.couchChecksum = ...
+            char(subnode.getFirstChild.getNodeValue);
+    end
+    
+    % Search for procedure XML object couchInsertionPosition
+    subexpression = xpath.compile('plan/couchInsertionPosition');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+    % If a couch checksum was found
+    if subnodeList.getLength > 0
+        
+        % Store the first returned value
+        subnode = subnodeList.item(0);
+
+        % Save the couch checksum to return structure as char array
+        referenceImage.couchInsertionPosition = ...
+            char(subnode.getFirstChild.getNodeValue);
+    end
 
     %% Load associated image
     % Search for associated images
