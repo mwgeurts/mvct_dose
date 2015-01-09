@@ -143,9 +143,12 @@ end
 % Log image type
 Event(['DICOM image type identified as ', image.type]);
 
-% Retrieve start voxel coordinates from DICOM header, in cm
+% Retrieve start voxel coordinate from DICOM header, in cm
 image.start(1) = info.ImagePositionPatient(1) / 10;
-image.start(2) = info.ImagePositionPatient(2) / 10;
+
+% Adjust IEC-Y to inverted value, in cm
+image.start(2) = -(info.ImagePositionPatient(2) + info.PixelSpacing(2) * ...
+    (size(images, 2) - 1)) / 10; 
 
 % Retrieve x/y voxel widths from DICOM header, in cm
 image.width(1) = info.PixelSpacing(1) / 10;
@@ -161,7 +164,7 @@ if info.ImageOrientationPatient(1) == 1
     [~, indices] = sort(sliceLocations, 'descend');
     
     % Store start voxel IEC-Y coordinate, in cm
-    image.start(3) = min(sliceLocations) / 10;
+    image.start(3) = -max(sliceLocations) / 10;
     
 % Otherwise, if the patient is Feet First (currently not supported)
 elseif info.ImageOrientationPatient(1) == -1

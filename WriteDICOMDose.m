@@ -189,6 +189,10 @@ end
 % Specify image position (in mm)
 info.ImagePositionPatient = varargin{1}.start' .* [1;1;-1] * 10; % mm
 
+% Adjust vertical position back to IEC
+info.ImagePositionPatient(2) = -(varargin{1}.start(2) + ...
+    varargin{1}.width(2) * (size(varargin{1}.data,2)-1)) * 10; % mm
+
 % Specify frame of reference UID
 if nargin == 3 && isfield(varargin{3}, 'frameRefUID')
     info.FrameOfReferenceUID = varargin{3}.frameRefUID;
@@ -204,7 +208,7 @@ info.SamplesPerPixel = 1;
 info.PhotometricInterpretation = 'MONOCHROME2';
 
 % Specify slice location (in mm)
-info.SliceLocation = -varargin{1}.start(3) * 10; % mm
+info.SliceLocation = -info.ImagePositionPatient(3); % mm
 
 % Specify number of frames and grid frame offset vector (in mm)
 info.NumberOfFrames = size(varargin{1}.data, 3);
@@ -233,8 +237,8 @@ info.TissueHeterogeneityCorrection = 'ROI_OVERRIDE';
 info.DoseGridScaling = max(max(max(varargin{1}.data))) / 65535;
 
 % Write DICOM file using dicomwrite()
-dicomwrite(reshape(rot90(uint16(varargin{1}.data/info.DoseGridScaling), 3), ...
-    [size(varargin{1}.data, 1) size(varargin{1}.data, 2) ...
+dicomwrite(reshape(flip(rot90(uint16(varargin{1}.data/info.DoseGridScaling), 3), 2), ...
+    [size(varargin{1}.data, 2) size(varargin{1}.data, 1) ...
     1 size(varargin{1}.data, 3)]), varargin{2}, info, 'CompressionMode', ...
     'None', 'CreateMode', 'Copy', 'Endian', 'ieee-le', ...
     'MultiframeSingleFile', true);

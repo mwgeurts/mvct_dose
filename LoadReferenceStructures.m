@@ -251,6 +251,7 @@ Event(sprintf('%i structures matched atlas for %s', n, ...
 
 % Loop through the structures discovered
 for i = 1:n
+    
     % Generate empty logical mask of the same image size as the reference
     % image (see LoadReferenceImage for more information)
     structures{i}.mask = false(varargin{3}.dimensions); 
@@ -279,6 +280,7 @@ for i = 1:n
     
     % Loop through ROICurves
     for j = 1:nodeList.getLength
+        
        % Set a handle to the current result
         subnode = nodeList.item(j-1); 
 
@@ -287,6 +289,7 @@ for i = 1:n
         
         % Some curves have zero points, so skip them
         if numpoints > 0
+            
             % Read in curve points
             points = str2num(subnode.getFirstChild.getNodeValue); %#ok<ST2NM>
 
@@ -299,6 +302,7 @@ for i = 1:n
         
             % If the slice index is within the reference image
             if slice ~= 0
+
                 % Test if voxel centers are within polygon defined by point 
                 % data, adding result to structure mask.  Note that voxels 
                 % encompassed by even numbers of curves are considered to 
