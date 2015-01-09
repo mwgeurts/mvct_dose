@@ -445,21 +445,20 @@ if iscell(name) || sum(name ~= 0)
         set(handles.struct_browse, 'Enable', 'on');
         
         % If current structure set FOR UID does not match image
-        if isfield(handles, 'structures') && ~isempty(handles.structures)
-            if ~isfield(handles.structures{1}, 'frameRefUID') || ...
-                    ~strcmp(handles.structures{1}.frameRefUID, ...
-                    handles.image.frameRefUID)
+        if isfield(handles, 'structures') && ~isempty(handles.structures) ...
+                && (~isfield(handles.structures{1}, 'frameRefUID') || ...
+                ~strcmp(handles.structures{1}.frameRefUID, ...
+                handles.image.frameRefUID))
                 
-                % Log event
-                Event(['Existing structure data cleared as it no longer ', ...
-                    'matches loaded image set'], 'WARN');
-                
-                % Clear structures
-                handles.structures = [];
-                
-                % Clear structures file
-                set(handles.struct_file, 'String', ''); 
-            end
+            % Log event
+            Event(['Existing structure data cleared as it no longer ', ...
+                'matches loaded image set'], 'WARN');
+
+            % Clear structures
+            handles.structures = [];
+
+            % Clear structures file
+            set(handles.struct_file, 'String', ''); 
         end
     else
         
@@ -482,6 +481,7 @@ if iscell(name) || sum(name ~= 0)
         % Otherwise, if one plan was found
         elseif length(scans) == 1
             
+            % Select only plan
             s(1) = 1;
             
         % Otherwise, if more than one plan was found
@@ -510,6 +510,12 @@ if iscell(name) || sum(name ~= 0)
         
         % Update progress bar
         waitbar(0.6, progress);
+        
+        % Load plan (for isocenter position)
+        handles.plan = LoadPlan(path, names{1}, scans{s(1)}.planUID);
+        
+        % Update progress bar
+        waitbar(0.7, progress);
         
         % Load structure set
         handles.structures = LoadReferenceStructures(path, names{1}, ...
@@ -1780,14 +1786,40 @@ plan.events{k,1} = 0;
 plan.events{k,2} = 'projWidth';
 plan.events{k,3} = 1;
 
-% Add isoX and isoY as 0 cm
+% Add isoX and isoY
 k = size(plan.events, 1) + 1;
-plan.events{k,1} = 0;
-plan.events{k,2} = 'isoX';
-plan.events{k,3} = 0;
-plan.events{k+1,1} = 0;
-plan.events{k+1,2} = 'isoY';
-plan.events{k+1,3} = 0;
+
+% If plan is loaded
+if isfield(handles, 'plan') && isfield(handles.plan, 'isocenter')
+    
+    % Set isocenter X/Y from delivery plan
+    plan.events{k,1} = 0;
+    plan.events{k,2} = 'isoX';
+    plan.events{k,3} = handles.plan.isocenter(1);
+    plan.events{k+1,1} = 0;
+    plan.events{k+1,2} = 'isoY';
+    plan.events{k+1,3} = handles.plan.isocenter(2);
+
+% Otherwise, if image contains isocenter tag
+elseif isfield(handles.image, 'isocenter') 
+    
+    % Set isocenter X/Y from image reference isocenter
+    plan.events{k,1} = 0;
+    plan.events{k,2} = 'isoX';
+    plan.events{k,3} = handles.image.isocenter(1);
+    plan.events{k+1,1} = 0;
+    plan.events{k+1,2} = 'isoY';
+    plan.events{k+1,3} = handles.image.isocenter(2);
+    
+% Otherwise set to 0,0 (DICOM isocenter)
+else
+    plan.events{k,1} = 0;
+    plan.events{k,2} = 'isoX';
+    plan.events{k,3} = 0;
+    plan.events{k+1,1} = 0;
+    plan.events{k+1,2} = 'isoY';
+    plan.events{k+1,3} = 0;
+end
 
 % Update progress bar
 waitbar(0.1, progress);

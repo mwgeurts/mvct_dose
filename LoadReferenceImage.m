@@ -67,8 +67,8 @@ if nodeList.getLength > 0
 else
 
     % Otherwise, warn the user that patient info wasn't found
-    Event('Patient demographics not found. This archive may be invalid.', ...
-        'WARN');
+    Event(['Patient demographics could not be found. It is possible ', ...
+        'this is not a valid patient archive.'], 'ERROR');
 end
 
 % Search for patient XML object patientID
@@ -228,6 +228,125 @@ for i = 1:nodeList.getLength
             char(subnode.getFirstChild.getNodeValue);
     end
 
+    %% Load associated plan trial
+    % Search for procedure XML object approvedPlanTrialUID
+    subexpression = xpath.compile('plan/briefPlan/approvedPlanTrialUID');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+    % If a couch checksum was found
+    if subnodeList.getLength > 0
+        
+        % Store the first returned value
+        subnode = subnodeList.item(0);
+
+        % Save the plan trial to return structure as char array
+        referenceImage.planTrialUID = ...
+            char(subnode.getFirstChild.getNodeValue);
+    else
+        Event(sprintf(['An approved plan trial UID this image set was not', ...
+        ' found in %s'], name), 'WARN');
+    end
+    
+    % Declare a new xpath search expression.  Search for all plan trials
+    subexpression = xpath.compile(['fullPlanTrialArray/', ...
+        'fullPlanTrialArray/patientPlanTrial']);
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+    % Loop through the plan trials
+    for j = 1:subnodeList.getLength
+        
+        % Retrieve handle to this image
+        subnode = subnodeList.item(j-1);
+        
+        %% Verify plan trial UID
+        % Search for procedure XML object databaseUID
+        subsubexpression = xpath.compile('dbInfo/databaseUID');
+
+        % Evaluate xpath expression and retrieve the results
+        subsubnodeList = ...
+            subsubexpression.evaluate(subnode, XPathConstants.NODESET);
+
+        % If a UID was found
+        if subsubnodeList.getLength > 0
+
+            % Store the first returned value
+            subsubnode = subsubnodeList.item(0);
+        else
+
+            % Otherwise, continue to next result
+            continue
+        end
+
+        % If the plan data array does not match the provided UID, continue to
+        % next result
+        if ~strcmp(char(subsubnode.getFirstChild.getNodeValue), ...
+                referenceImage.planTrialUID)
+            continue
+        end  
+       
+        %% Load reference image isocenter
+        % Search for procedure XML object referenceImageIsocenter
+        subsubexpression = xpath.compile('referenceImageIsocenter/x');
+
+        % Evaluate xpath expression and retrieve the results
+        subsubnodeList = ...
+            subsubexpression.evaluate(subnode, XPathConstants.NODESET);
+
+        % If a couch checksum was found
+        if subsubnodeList.getLength > 0
+
+            % Store the first returned value
+            subsubnode = subsubnodeList.item(0);
+
+            % Save the couch checksum to return structure as char array
+            referenceImage.isocenter(1) = ...
+                str2double(subsubnode.getFirstChild.getNodeValue);
+        end
+        
+        % Search for procedure XML object referenceImageIsocenter
+        subsubexpression = xpath.compile('referenceImageIsocenter/y');
+
+        % Evaluate xpath expression and retrieve the results
+        subsubnodeList = ...
+            subsubexpression.evaluate(subnode, XPathConstants.NODESET);
+
+        % If a couch checksum was found
+        if subsubnodeList.getLength > 0
+
+            % Store the first returned value
+            subsubnode = subsubnodeList.item(0);
+
+            % Save the couch checksum to return structure as char array
+            referenceImage.isocenter(2) = ...
+                str2double(subsubnode.getFirstChild.getNodeValue);
+        end
+        
+        % Search for procedure XML object referenceImageIsocenter
+        subsubexpression = xpath.compile('referenceImageIsocenter/z');
+
+        % Evaluate xpath expression and retrieve the results
+        subsubnodeList = ...
+            subsubexpression.evaluate(subnode, XPathConstants.NODESET);
+
+        % If a couch checksum was found
+        if subsubnodeList.getLength > 0
+
+            % Store the first returned value
+            subsubnode = subsubnodeList.item(0);
+
+            % Save the couch checksum to return structure as char array
+            referenceImage.isocenter(3) = ...
+                str2double(subsubnode.getFirstChild.getNodeValue);
+        end
+        
+        % Reference plan trial was found, so exit loop
+        break;
+    end
+    
     %% Load associated image
     % Search for associated images
     subexpression = ...
