@@ -55,7 +55,7 @@ function MVCTdose_OpeningFcn(hObject, ~, handles, varargin)
 % varargin   command line arguments to MVCTdose (see VARARGIN)
 
 % Turn off MATLAB warnings
-warning('off','all');
+warning('off', 'all');
 
 % Choose default command line output for MVCTdose
 handles.output = hObject;
@@ -72,6 +72,7 @@ cd(path);
 % Clear temporary variable
 clear path;
 
+%% Initialize log
 % Set version information.  See LoadVersionInfo for more details.
 handles.versionInfo = LoadVersionInfo;
 
@@ -92,6 +93,34 @@ string = sprintf('%s\n', separator, string{:}, separator);
 
 % Log information
 Event(string, 'INIT');
+
+%% Add DICOM tools submodule
+% Add DICOM tools submodule to search path
+addpath('./dicom_tools');
+
+% Check if MATLAB can find LoadDICOMImages.m
+if exist('LoadDICOMImages', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The DICOM Tools submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
+
+%% Add Structure Atlas submodule
+% Add structure atlas submodule to search path
+addpath('./structure_atlas');
+
+% Check if MATLAB can find LoadDICOMImages.m
+if exist('LoadAtlas', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The Structure Atlas submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
 
 %% Load beam models
 % Declare path to beam model folders
@@ -144,64 +173,25 @@ Event(sprintf('%i beam models found', length(handles.beammodels) - 1));
 clear dirs i;
 
 %% Configure Dose Calculation
-% Start with the handles.calcDose flag set to 1 (dose calculation enabled)
-handles.calcDose = 1;
+% Add archive extraction tools submodule to search path
+addpath('./tomo_extract');
 
-% Check for gpusadose
-[~, cmdout] = system('which gpusadose');
-
-% If gpusadose exists
-if ~strcmp(cmdout,'')
+% Check if MATLAB can find CalcDose.m
+if exist('CalcDose', 'file') ~= 2
     
-    % Log gpusadose version
-    [~, str] = system('gpusadose -V');
-    cellarr = textscan(str, '%s', 'delimiter', '\n');
-    Event(sprintf('Found %s at %s', char(cellarr{1}(1)), cmdout));d
-    
-    % Clear temporary variables
-    clear str cellarr;
-else
-    
-    % Warn the user that gpusadose was not found
-    Event(['Linked application gpusadose not found, will now check for ', ...
-        'remote computation server'], 'WARN');
-
-    % A try/catch statement is used in case Ganymed-SSH2 is not available
-    try
-        % Load Ganymed-SSH2 javalib
-        Event('Adding Ganymed-SSH2 javalib');
-        addpath('../ssh2_v2_m1_r6/'); 
-        Event('Ganymed-SSH2 javalib added successfully');
-
-        % Establish connection to computation server.  The ssh2_config
-        % parameters below should be set to the DNS/IP address of the
-        % computation server, user name, and password with SSH/SCP and
-        % read/write access, respectively.  See the README for more 
-        % infomation
-        Event('Connecting to tomo-research via SSH2');
-        handles.ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
-
-        % Test the SSH2 connection.  If this fails, catch the error below.
-        [handles.ssh2, ~] = ssh2_command(handles.ssh2, 'ls');
-        Event('SSH2 connection successfully established');
-
-    % addpath, ssh2_config, or ssh2_command may all fail if ganymed is not
-    % available or if the remote server is not responding
-    catch err
-
-        % Log failure
-        Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
-
-        % If either the addpath or ssh2_command calls fails, set 
-        % handles.calcDose flag to zero (dose calculation will be disabled)
-        Event('Dose calculation will be disabled', 'WARN');
-        handles.calcDose = 0;
-
-    end
+    % If not, throw an error
+    Event(['The Archive Extraction Tools submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
 end
 
-% Clear temporary variables
-clear cmdout;
+% Check for presence of dose calculator
+handles.calcDose = CalcDose();
+
+% Set sadose flag
+handles.sadose = 0;
+Event('Dose calculation set to use gpusadose');
 
 %% Load the default IVDT
 % Log start
@@ -505,7 +495,7 @@ if iscell(name) || sum(name ~= 0)
         end
         
         % Load image 
-        handles.image = LoadReferenceImage(path, names{1}, ...
+        handles.image = LoadImage(path, names{1}, ...
             scans{s(1)}.planUID);
         
         % Update progress bar
@@ -518,7 +508,7 @@ if iscell(name) || sum(name ~= 0)
         waitbar(0.7, progress);
         
         % Load structure set
-        handles.structures = LoadReferenceStructures(path, names{1}, ...
+        handles.structures = LoadStructures(path, names{1}, ...
             handles.image, handles.atlas);
         
         % Update progress bar
@@ -2060,19 +2050,8 @@ fclose(fidw);
 waitbar(0.3, progress);
 
 %% Calculate and display dose
-% If an ssh2 connection is set (remote calculation)
-if isfield(handles, 'ssh2')
-    
-    % Calculate dose using image, plan, directory, & SSH2 connection
-    handles.dose = CalcDose(handles.image, plan, folder, handles.ssh2); 
-  
-% Otherwise calculate dose locally
-else
-    
-    % Calculate dose using image, plan, & beam model directory
-    handles.dose = CalcDose(handles.image, plan, folder); 
-    
-end
+% Calculate dose using image, plan, directory, & sadose flag
+handles.dose = CalcDose(handles.image, plan, folder, handles.sadose);
 
 % Update progress bar
 waitbar(0.7, progress, 'Updating results');
