@@ -329,7 +329,7 @@ Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
 % Attempt to load the atlas
-handles.atlas = LoadAtlas('atlas.xml');
+handles.atlas = LoadAtlas('structure_atlas/atlas.xml');
 
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
