@@ -53,6 +53,7 @@ try
     
     % If multiple lines exist in the event
     for i = 2:size(str,2)
+        
         % If the line is not empty, write additional line tab-justified
         % with first line
         if ~strcmp(str{i}, ''); fprintf(fid, '\t\t\t\t%s\n', str{i}); end
@@ -67,6 +68,7 @@ try
     
     % If multiple lines exist in the event
     for i = 2:size(str,2)
+        
         % If the line is not empty, write additional line tab-justified
         % with first line
         if ~strcmp(str{i}, ''); fprintf('\t\t\t\t%s\n', str{i}); end
@@ -74,20 +76,25 @@ try
     
     % If UI handle is present, add event to UI cell string
     if ~isempty(handle) && strcmp(varargin{2},'ERROR')
+        
         % If error, add event in red
         set(handle, 'Data', vertcat({['<html><font color="red">', ...
             datestr(now,'yyyy-mm-dd HH:MM:SS'),'</font></html>'], ...
             ['<html><font color="red">',varargin{2},'</font></html>'], ...
             ['<html><font color="red">',str{1},'</font></html>']}, ...
             get(handle, 'Data')));
+        
     elseif ~isempty(handle) && strcmp(varargin{2},'WARN')
+        
         % If warn, add event in orange
         set(handle, 'Data', vertcat({['<html><font color="orange">', ...
             datestr(now,'yyyy-mm-dd HH:MM:SS'),'</font></html>'], ...
             ['<html><font color="orange">',varargin{2},'</font></html>'], ...
             ['<html><font color="orange">',str{1},'</font></html>']}, ...
             get(handle, 'Data')));
+        
     elseif ~isempty(handle)
+        
         % Otherwise, add event in green
         set(handle, 'Data', vertcat({['<html><font color="green">', ...
             datestr(now,'yyyy-mm-dd HH:MM:SS'),'</font></html>'], ...
@@ -112,12 +119,13 @@ catch
     % If UI handle is present, add event to UI cell string in black
     if ~isempty(handle)
         set(handle, 'Data', vertcat({datestr(now,'yyyy-mm-dd HH:MM:SS'), ...
-            varargin{2}, [str,' [not written to log]']}, get(handle, 'Data')));
+            varargin{2}, [str,' [not written to log]']}, ...
+            get(handle, 'Data')));
     end
 end
 
 % If the event varargin{2} was error, also throw error
-if strcmp(varargin{2},'ERROR') 
+if strcmp(varargin{2}, 'ERROR') 
      errordlg(varargin{1});
 end
 
