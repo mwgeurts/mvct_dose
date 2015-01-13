@@ -190,8 +190,8 @@ end
 handles.calcDose = CalcDose();
 
 % Set sadose flag
-handles.sadose = 0;
-Event('Dose calculation set to use gpusadose');
+handles.sadose = 1;
+Event(sprintf('Dose calculation sadose flag set to %i', handles.sadose));
 
 %% Load the default IVDT
 % Log start
@@ -1853,7 +1853,7 @@ plan.events{k+1,3} = 0;
 
 % Add isoZRate (cm/tau) as pitch (cm/rot) / GP (sec/rot) * scale (sec/tau)
 Event(sprintf('Couch velocity set to %g cm/sec', ...
-    -str2double(get(handles.pitch, 'String')) / ...
+    str2double(get(handles.pitch, 'String')) / ...
     str2double(get(handles.period, 'String'))));
 k = size(plan.events, 1) + 1;
 plan.events{k,1} = 0;
@@ -2053,63 +2053,67 @@ waitbar(0.3, progress);
 % Calculate dose using image, plan, directory, & sadose flag
 handles.dose = CalcDose(handles.image, plan, folder, handles.sadose);
 
-% Update progress bar
-waitbar(0.7, progress, 'Updating results');
-
-% Clear temporary variables
-clear ivdt plan k folder fidr fidw tline api pos totalTau;
-
-% Clear and set reference to axis
-cla(handles.dose_axes, 'reset');
-axes(handles.dose_axes);
-Event('Plotting dose image');
-
-% Enable Image Viewer UI components
-set(allchild(handles.dose_axes), 'visible', 'on'); 
-set(handles.dose_axes, 'visible', 'on');
-set(handles.dose_slider, 'visible', 'on');
-set(handles.tcs_button, 'visible', 'on'); 
-set(handles.alpha, 'visible', 'on');
-
-% Add necessary fields to image and dose variables
-handles.image.structures = handles.structures;
-handles.image.stats = get(handles.dvh_table, 'Data');
-handles.dose.registration = [];
-
-% Initialize image viewer
-InitializeViewer(handles.dose_axes, handles.tcsview, ...
-    sscanf(get(handles.alpha, 'String'), '%f%%')/100, handles.image, ...
-    handles.dose, handles.dose_slider);
-
-% Update progress bar
-waitbar(0.8, progress);
-
-% If structures are present
-if isfield(handles, 'structures') && ~isempty(handles.structures)
-
-    % Update DVH plot
-    handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
-        get(handles.dvh_table, 'Data'), handles.image, handles.dose);
+% If dose was computed
+if isfield(handles.dose, 'data')
 
     % Update progress bar
-    waitbar(0.9, progress);
+    waitbar(0.7, progress, 'Updating results');
 
-    % Update Dx/Vx statistics
-    set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-        get(handles.dvh_table, 'Data'), [], handles.dose.dvh));
-    
-    % Enable statistics table
-    set(handles.dvh_table, 'Visible', 'on');
-    
-    % Enable DVH export button
-    set(handles.dvh_button, 'Enable', 'on');
+    % Clear temporary variables
+    clear ivdt plan k folder fidr fidw tline api pos totalTau;
+
+    % Clear and set reference to axis
+    cla(handles.dose_axes, 'reset');
+    axes(handles.dose_axes);
+    Event('Plotting dose image');
+
+    % Enable Image Viewer UI components
+    set(allchild(handles.dose_axes), 'visible', 'on'); 
+    set(handles.dose_axes, 'visible', 'on');
+    set(handles.dose_slider, 'visible', 'on');
+    set(handles.tcs_button, 'visible', 'on'); 
+    set(handles.alpha, 'visible', 'on');
+
+    % Add necessary fields to image and dose variables
+    handles.image.structures = handles.structures;
+    handles.image.stats = get(handles.dvh_table, 'Data');
+    handles.dose.registration = [];
+
+    % Initialize image viewer
+    InitializeViewer(handles.dose_axes, handles.tcsview, ...
+        sscanf(get(handles.alpha, 'String'), '%f%%')/100, handles.image, ...
+        handles.dose, handles.dose_slider);
+
+    % Update progress bar
+    waitbar(0.8, progress);
+
+    % If structures are present
+    if isfield(handles, 'structures') && ~isempty(handles.structures)
+
+        % Update DVH plot
+        handles.dose.dvh = UpdateDVH(handles.dvh_axes, ...
+            get(handles.dvh_table, 'Data'), handles.image, handles.dose);
+
+        % Update progress bar
+        waitbar(0.9, progress);
+
+        % Update Dx/Vx statistics
+        set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+            get(handles.dvh_table, 'Data'), [], handles.dose.dvh));
+
+        % Enable statistics table
+        set(handles.dvh_table, 'Visible', 'on');
+
+        % Enable DVH export button
+        set(handles.dvh_button, 'Enable', 'on');
+    end
+
+    % Update progress bar
+    waitbar(1.0, progress, 'Dose calculation completed');
+
+    % Enable dose export buttons
+    set(handles.dose_button, 'Enable', 'on');
 end
-
-% Update progress bar
-waitbar(1.0, progress, 'Dose calculation completed');
-
-% Enable dose export buttons
-set(handles.dose_button, 'Enable', 'on');
 
 % Close and delete progress handle
 close(progress);
