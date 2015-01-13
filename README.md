@@ -20,28 +20,22 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
 * [Exporting Results](README.md#exporting-results)
   * [Dose Volume Histogram](README.md#dose-volume-histograms)
   * [DICOM RT Dose Image](README.md#dicom-rt-dose-image)
-* [Third Party Statements](README.md#third-party-statements)
 
 ## Installation and Use
 
-To install the TomoTherapy MVCT Dose Calculator Tool, copy all MATLAB .m and .fig files into a directory with read/write access. If using git, execute `git clone https://github.com/mwgeurts/mvct_dose`.  Then, create a folder (the default is `./GPU`) and copy each beam model into them. To change the location of the folder, edit the line `handles.modeldir = './GPU';` in the function `MVCTdose_OpeningFcn()`.
+To install the TomoTherapy MVCT Dose Calculator Tool, copy all MATLAB .m, .fig files, and submodules ([dicom_tools](https://github.com/mwgeurts/dicom_tools), [tomo_extract](https://github.com/mwgeurts/tomo_extract), and [structure_atlas](https://github.com/mwgeurts/structure_atlas)) into a directory with read/write access. If using git, execute `git clone --recursive https://github.com/mwgeurts/mvct_dose`.  Then, create a folder (the default is `./GPU`) and copy each beam model into it.  To change the location of this folder, edit the line `handles.modeldir = './GPU';` in the function `MVCTdose_OpeningFcn()`.
 
-Next, the TomoTherapy MVCT Dose Calculator Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using a remote server, open `MVCTdose_OpeningFcn()` and find the following lines (note each line is separated by several lines of comments and `Event()` calls in the actual file):
+Next, the TomoTherapy MVCT Dose Calculator Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using local calculation, `gpusadose` must be installed in an execution path available to MATLAB. If using a remote server, open `CalcDose()`, find the following line, and enter the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
 
 ```matlab
-addpath('../ssh2_v2_m1_r6/');
-ssh2 = ssh2_config('tomo-research','tomo','hi-art');
+ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
 ```
-
-This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded/extracted and the `MVCTdose_OpeningFcn()` statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.
-
-Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
 
 To run this application, call `MVCTdose` from MATLAB.  Once the application interface loads, select browse under inputs to load the CT and structure set inputs. Then enter the remaining inputs and click "Calculate Dose".
 
 ## Compatibility and Requirements
 
-This application has been validated using TomoTherapy version 4.2 and 5.0 patient archives on Macintosh OSX 10.10 (Yosemite) and MATLAB version 8.4 and 8.5.  Exported DICOM RT Dose images have been validated in MIM version 6.4.
+This application has been validated using TomoTherapy version 4.2 and 5.0 patient archives on Macintosh OSX 10.10 (Yosemite) and MATLAB version 8.4 and 8.5.  Exported DICOM RT Dose images have been validated in MIM version 6.4.  Only HFS CT images have been tested at this time.
 
 ## Troubleshooting
 
@@ -150,31 +144,3 @@ The dose image can be saved as a DICOM RT Dose file by clicking "Export Dose". A
 | 3004,0004 | [CS] Dose Type | PHYSICAL |
 | 3004,0014 | [CS] Tissue Heterogeneity Correction | ROI_OVERRIDE |
 | 3004,000E | [DS] Dose Grid Scaling | Conversion of image value (uint16) to dose (Gy) |
-
-## Third Party Statements
-
-SSH/SFTP/SCP for Matlab (v2)
-<br>Copyright &copy; 2014, David S. Freedman
-<br>All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in
-  the documentation and/or other materials provided with the distribution
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
