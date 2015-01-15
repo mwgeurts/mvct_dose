@@ -191,7 +191,25 @@ handles.calcDose = CalcDose();
 
 % Set sadose flag
 handles.sadose = 1;
-Event(sprintf('Dose calculation sadose flag set to %i', handles.sadose));
+
+% If calc dose was successful and sadose flag is set
+if handles.calcDose == 1 && handles.sadose == 1
+    
+    % Log dose calculation status
+    Event('CPU Dose calculation enabled');
+    
+% If calc dose was successful and sadose flag is not set
+elseif handles.calcDose == 1 && handles.sadose == 0
+    
+    % Log dose calculation status
+    Event('GPU Dose calculation enabled');
+   
+% Otherwise, calc dose was not successful
+else
+    
+    % Log dose calculation status
+    Event('Dose calculation disabled', 'WARN');
+end
 
 %% Load the default IVDT
 % Log start
@@ -522,8 +540,9 @@ if iscell(name) || sum(name ~= 0)
         
         % Loop through scan lengths
         for i = 1:length(scans{s(1)}.scanLengths)
-            handles.slices{i+1} = sprintf('%i. [%g %g]', i, ...
-                scans{s(1)}.scanLengths(i,:));
+            handles.slices{i+1} = sprintf('%i. [%g %g] %s-%s', i, ...
+                scans{s(1)}.scanLengths(i,:) + handles.image.isocenter(3), ...
+                scans{s(1)}.date{i}, scans{s(1)}.time{i});
         end
         
         % Update slice selection menu UI
@@ -873,7 +892,7 @@ if get(hObject, 'Value') > 1
     
     % Retrieve positions from slice menu
     val = cell2mat(textscan(...
-        handles.slices{get(hObject, 'Value')}, '%f [%f %f]'));
+        handles.slices{get(hObject, 'Value')}, '%f [%f %f] %f-%f'));
     
     % Log event
     Event(sprintf('Updating slice selector to [%g %g]', val(2:3)));
