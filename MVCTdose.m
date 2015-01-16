@@ -688,6 +688,9 @@ if iscell(name) || sum(name ~= 0)
             min(start(1) + size(imageA, 2) * width(1), max(pos(:,1))) 0];
     api.setDragConstraintFcn(fcn);
     
+    % Hide distance label
+    api.setLabelVisible(0);
+    
     % Clear temporary variable
     clear h s i j k name names path sag width start reference slice B ...
         imageA fcn api;
@@ -865,6 +868,9 @@ if ~isequal(name, 0) && isfield(handles, 'image') && ...
         fcn = @(pos) [max(start(1), min(pos(:,1))) 0; ...
             min(start(1) + size(imageA, 2) * width(1), max(pos(:,1))) 0];
         api.setDragConstraintFcn(fcn);
+        
+        % Hide distance label
+        api.setLabelVisible(0);
 
         % Clear temporary variables
         clear h slice width start stats i B k fcn api pos;
