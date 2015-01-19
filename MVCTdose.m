@@ -186,11 +186,12 @@ if exist('CalcDose', 'file') ~= 2
         'ERROR');
 end
 
+%% Configure Dose Calculation
 % Check for presence of dose calculator
 handles.calcDose = CalcDose();
 
 % Set sadose flag
-handles.sadose = 1;
+handles.sadose = 0;
 
 % If calc dose was successful and sadose flag is set
 if handles.calcDose == 1 && handles.sadose == 1
