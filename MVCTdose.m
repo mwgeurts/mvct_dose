@@ -94,6 +94,20 @@ string = sprintf('%s\n', separator, string{:}, separator);
 % Log information
 Event(string, 'INIT');
 
+%% Add Tomo archive extraction tools submodule
+% Add archive extraction tools submodule to search path
+addpath('./tomo_extract');
+
+% Check if MATLAB can find CalcDose.m
+if exist('CalcDose', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The Archive Extraction Tools submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
+
 %% Add DICOM tools submodule
 % Add DICOM tools submodule to search path
 addpath('./dicom_tools');
@@ -171,20 +185,6 @@ Event(sprintf('%i beam models found', length(handles.beammodels) - 1));
 
 % Clear temporary variables
 clear dirs i;
-
-%% Configure Dose Calculation
-% Add archive extraction tools submodule to search path
-addpath('./tomo_extract');
-
-% Check if MATLAB can find CalcDose.m
-if exist('CalcDose', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The Archive Extraction Tools submodule does not exist in the ', ...
-        'search path. Use git clone --recursive or git submodule init ', ...
-        'followed by git submodule update to fetch all submodules'], ...
-        'ERROR');
-end
 
 %% Configure Dose Calculation
 % Check for presence of dose calculator
