@@ -58,7 +58,7 @@ Finally, all scheduled MVCT procedures for the selected plan will be parsed from
 
 ## Loading Structure Sets
 
-When loading structures, each structure is compared to a pre-loaded atlas (see `LoadAtlas()` and atlas.xml for more information).  Structures that match known exclusions (planning structures, etc) are not loaded. Structures that do not match any atlas names are still loaded and given an initial Dx value of 50%. The atlas also contains default Dx values for each structure.  To load all structures, edit the load flags in the atlas to 1.
+When loading structures, each structure is compared to a pre-loaded atlas (see [structure_atlas](https://github.com/mwgeurts/structure_atlas) for more information).  Structures that match known exclusions (planning structures, etc) are not loaded. Structures that do not match any atlas names are still loaded and given an initial Dx value of 50%. The atlas also contains default Dx values for each structure.  To load all structures, edit the load flags in the atlas to 1.
 
 ## Beam Model Selection
 
