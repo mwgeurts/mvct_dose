@@ -13,6 +13,7 @@ function sinogram = LoadSinogram(path, name)
 %   sinogram: 64 x n array of leaf open fractions. If unsuccessful, an
 %       empty array is returned.
 %
+% Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
