@@ -3,11 +3,11 @@
 by Mark Geurts <mark.w.geurts@gmail.com>
 <br>Copyright &copy; 2015, University of Wisconsin Board of Regents
 
-The TomoTherapy&reg; MVCT Dose Calculator Tool is a GUI based standalone application written in MATLAB that facilitates estimation of the dose delivered during Mega-Voltage CT (MVCT) acquisition on a [TomoTherapy](http://www.accuray.com) Treatment System. 
+The TomoTherapy&reg; MVCT Dose Calculator Tool is a GUI based standalone application written in MATLAB&reg; that facilitates estimation of the dose delivered during Mega-Voltage CT (MVCT) acquisition on a [TomoTherapy](http://www.accuray.com) Treatment System. 
 
 Users can load a DICOM CT and RT Structure Set or a patient archive CT and structure set as patient inputs, drag to select a scan length and pitch, input an Image Value to Density Table (IVDT), then select from a list of provided beam models and calculate dose.  The MVCT acquisition may be further modified by adjusting the MLC sinogram, beam output, gantry period, and jaw width to study customized scanning scenarios.  The resulting dose calculation and Dose Volume Histogram (DVH) are displayed and available for export.
 
-TomoTherapy is a registered trademark of Accuray Incorporated.
+TomoTherapy is a registered trademark of Accuray Incorporated. MATLAB is a registered trademark of MathWorks Inc. 
 
 ## Contents
 
