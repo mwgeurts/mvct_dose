@@ -1,0 +1,13 @@
+DEFAULT_PATH          =   userpath
+MODEL_PATH            =   ./GPU
+IVDT_FILE             =   ivdt.txt
+ATLAS_FILE            =   structure_atlas/atlas.xml
+REMOTE_CALC_SERVER    =   ipaddress
+REMOTE_CALC_USER      =   username
+REMOTE_CALC_PASS      =   password
+PITCH_OPTIONS         =   Fine,Normal,Coarse
+PITCH_VALUES          =   0.4,0.8,1.2
+DEFAULT_PERIOD        =   10
+DEFAULT_IMAGE_VIEW    =   S
+DEFAULT_TRANSPARENCY  =   30%
+USE_SADOSE            =   0
