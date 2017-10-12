@@ -12,13 +12,13 @@ TomoTherapy is a registered trademark of Accuray Incorporated. MATLAB is a regis
 ## Contents
 
 * [Installation and Use](README.md#installation-and-use)
+  * [Loading Patient Archives](README.md#loading-patient-archives)
+  * [Loading Structure Sets](README.md#loading-structure-sets)
+  * [Beam Model Selection](README.md#beam-model-selection)
+  * [Customized Sinograms](README.md#customized-sinograms)
 * [Compatibility and Requirements](README.md#compatibility-and-requirements)
 * [Troubleshooting](README.md#troubleshooting)
 * [Default IVDT](README.md#default-ivdt)
-* [Loading Patient Archives](README.md#loading-patient-archives)
-* [Loading Structure Sets](README.md#loading-structure-sets)
-* [Beam Model Selection](README.md#beam-model-selection)
-* [Customized Sinograms](README.md#customized-sinograms)
 * [Exporting Results](README.md#exporting-results)
   * [Dose Volume Histogram](README.md#dose-volume-histograms)
   * [DICOM RT Dose Image](README.md#dicom-rt-dose-image)
@@ -26,11 +26,39 @@ TomoTherapy is a registered trademark of Accuray Incorporated. MATLAB is a regis
 
 ## Installation and Use
 
-To install the TomoTherapy MVCT Dose Calculator Tool as a MATLAB App, download and execute the `MVCT Dose Calculator.mlappinstall` file from this directory. If using git, execute `git clone --recursive https://github.com/mwgeurts/mvct_dose`.  Then, create a folder (the default is `./GPU`) and copy each beam model into it.  To change the location of this folder, edit the line `handles.modeldir = './GPU';` in the function `MVCTdose_OpeningFcn()`.
+To install the TomoTherapy MVCT Dose Calculator Tool as a MATLAB App, download and execute the `MVCT Dose Calculator.mlappinstall` file from this directory. If using git, execute `git clone --recursive https://github.com/mwgeurts/mvct_dose`.  Then, create a folder (the default is `./GPU`) and copy each beam model into it.  To change the location of this folder, edit the line `MODEL_PATH = ./GPU` in the `config.txt` file.
 
-Next, the TomoTherapy MVCT Dose Calculator Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using local calculation, `gpusadose` must be installed in an execution path available to MATLAB. If using a remote server, open `CalcDose()`, find the statement `ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');`, and enter the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
+Next, the TomoTherapy MVCT Dose Calculator Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  By default, the tool will always search locally first (`gpusadose` must be installed in an execution path available to MATLAB). If not found, the tool will attempt to connect to a remote server using the name and access credentials in the `config.txt` file.  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
 
-To run this application, call `MVCTdose` from MATLAB.  Once the application interface loads, select browse under inputs to load the CT and structure set inputs. Then enter the remaining inputs and click "Calculate Dose".
+To run this application, start it from the MATLAB Apps menu (if installed this way) or call `MVCTdose`.  Once the application interface loads, select browse under inputs to load the CT and structure set inputs. Then enter the remaining inputs and click "Calculate Dose".
+
+### Loading Patient Archives
+
+To load a TomoTherapy patient archive, after clicking Browse under "Select Image Set" change the file type to Patient Archive (*.xml).  Then, navigate to and select the _patient.xml file in the patient archive.  The tool will scan the archive for all approved treatment plans, and if multiple are found, prompt the user to select which plan to load. The CT image, structure set, and IVDT will then be loaded from the treatment plan.
+
+Finally, all scheduled MVCT procedures for the selected plan will be parsed from the archive and populated in the Slice Selection dropdown menu on the application interface.  The procedures will be listed by the scan acquisition start and end IEC-Y values. Selecting one of these values from the dropdown menu will update the slice selection image to reflect the scan actually performed on that day.  In this manner, this tool may be used to estimate the actual dose delivered to a patient as a result of the slices selected by the radiation therapists.
+
+### Loading Structure Sets
+
+When loading structures, each structure is compared to a pre-loaded atlas (see [structure_atlas](https://github.com/mwgeurts/structure_atlas) for more information).  Structures that match known exclusions (planning structures, etc) are not loaded. Structures that do not match any atlas names are still loaded and given an initial Dx value of 50%. The atlas also contains default Dx values for each structure.  To load all structures, edit the load flags in the atlas to 1.
+
+### Beam Model Selection
+
+As described above, multiple beam models may be loaded into the MVCT Dose Calculator Tool to enable the user to investigate different beam energies or other model-specific parameters. These files will be copied to the computation server along with the plan files at the time of program execution.  Each beam model must be contained within a unique folder under the model folder and contain the following beam model files:
+
+* dcom.header
+* lft.img
+* penumbra.img
+* kernel.img
+* fat.img
+
+### Customized Sinograms
+
+By default, the MVCT Dose Calculator Tool assumes the MVCT is acquired with all MLC leaves open.  However, customized MLC leaf pattern may be used for dose calculation.  To use a custom leaf pattern, select a beam model and click the radio button labelled "Custom Sinogram". Two inputs will become available: a file browser (to select the MLC sinogram) and projection rate.  
+
+The custom sinogram file must be a binary file containing 64 x n leaf open times, where n is the number of projections.  Each leaf open time can be single (32-bit) or double (64-bit), big or little endian, and must be between zero (leaf closed) and one (leaf open).  The recommended format is single little endian values. The projection rate value will determine the length of each projection, and the scan length/gantry period will determine the total number of projections needed.  
+
+If the provided sinogram contains fewer projections than what is needed based on the scan selection, the remaining projections will assume all leaves are closed.  If the provided sinogram contains more projections, the sinogram will be truncated based on the length needed to deliver the scan.
 
 ## Compatibility and Requirements
 
@@ -50,34 +78,6 @@ calibration.densVals=0 0.001 0.29 0.46 1 1.153 1.335 1.561 1.824 4.59
 ```
 
 When loading a TomoTherapy patient archive, the IVDT used by the plan is automatically loaded into the MVCT Dose Calculator Tool.  These values may be edited prior to dose calculation by selecting and modifying existing values or adding additional rows to the table.  The tool will automatically re-sort the table by HU value.  Prior to calculation, both the HU and density values must be in ascending order (a negative density slope is not permitted).
-
-## Loading Patient Archives
-
-To load a TomoTherapy patient archive, after clicking Browse under "Select Image Set" change the file type to Patient Archive (*.xml).  Then, navigate to and select the _patient.xml file in the patient archive.  The tool will scan the archive for all approved treatment plans, and if multiple are found, prompt the user to select which plan to load. The CT image, structure set, and IVDT will then be loaded from the treatment plan.
-
-Finally, all scheduled MVCT procedures for the selected plan will be parsed from the archive and populated in the Slice Selection dropdown menu on the application interface.  The procedures will be listed by the scan acquisition start and end IEC-Y values. Selecting one of these values from the dropdown menu will update the slice selection image to reflect the scan actually performed on that day.  In this manner, this tool may be used to estimate the actual dose delivered to a patient as a result of the slices selected by the radiation therapists.
-
-## Loading Structure Sets
-
-When loading structures, each structure is compared to a pre-loaded atlas (see [structure_atlas](https://github.com/mwgeurts/structure_atlas) for more information).  Structures that match known exclusions (planning structures, etc) are not loaded. Structures that do not match any atlas names are still loaded and given an initial Dx value of 50%. The atlas also contains default Dx values for each structure.  To load all structures, edit the load flags in the atlas to 1.
-
-## Beam Model Selection
-
-As described above, multiple beam models may be loaded into the MVCT Dose Calculator Tool to enable the user to investigate different beam energies or other model-specific parameters. These files will be copied to the computation server along with the plan files at the time of program execution.  Each beam model must be contained within a unique folder under the model folder and contain the following beam model files:
-
-* dcom.header
-* lft.img
-* penumbra.img
-* kernel.img
-* fat.img
-
-## Customized Sinograms
-
-By default, the MVCT Dose Calculator Tool assumes the MVCT is acquired with all MLC leaves open.  However, customized MLC leaf pattern may be used for dose calculation.  To use a custom leaf pattern, select a beam model and click the radio button labelled "Custom Sinogram". Two inputs will become available: a file browser (to select the MLC sinogram) and projection rate.  
-
-The custom sinogram file must be a binary file containing 64 x n leaf open times, where n is the number of projections.  Each leaf open time can be single (32-bit) or double (64-bit), big or little endian, and must be between zero (leaf closed) and one (leaf open).  The recommended format is single little endian values. The projection rate value will determine the length of each projection, and the scan length/gantry period will determine the total number of projections needed.  
-
-If the provided sinogram contains fewer projections than what is needed based on the scan selection, the remaining projections will assume all leaves are closed.  If the provided sinogram contains more projections, the sinogram will be truncated based on the length needed to deliver the scan.
 
 ## Exporting Results
 
