@@ -42,7 +42,7 @@ This application records key input parameters and results to a log.txt file usin
 
 ## Default IVDT
 
-This repository includes a default IVDT (ivdt.txt) that is loaded upon application startup.  To edit the location of this file, edit the line `fid = fopen('ivdt.txt', 'r');` in `MVCTdose_OpeningFcn()`.  This file may be modified to change the default IVDT so long as the following format is retained, where the CT numbers range from 0 to 4095 and the density values are in g/cm<sup>3</sup>. Each value must be separated by whitespace (space, \b or \t).  When displayed in the MVCT Dose Calculator Tool, the CT numbers are converted to Hounsfield Units (HU) by subtracting 1024.
+This repository includes a default IVDT (ivdt.txt) that is loaded upon application startup.  To edit the location of this file, edit the line `IVDT_FILE = ivdt.txt` in the `config.txt` file.  This file may be modified to change the default IVDT so long as the following format is retained, where the CT numbers range from 0 to 4095 and the density values are in g/cm<sup>3</sup>. Each value must be separated by whitespace (space, \b or \t).  When displayed in the MVCT Dose Calculator Tool, the CT numbers are converted to Hounsfield Units (HU) by subtracting 1024.
 
 ```
 calibration.ctNums=0 29 340 519 1027 1244 1465 1831 2226 4095
