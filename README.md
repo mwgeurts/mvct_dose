@@ -15,7 +15,7 @@ To install the TomoTherapy MVCT Dose Calculator Tool as a MATLAB App, download a
 
 ## Usage
 
-To run this application, run the App or call `MVCTdose` from MATLAB. Once the application interface loads, select browse under inputs to load the CT and structure set inputs. Then enter the remaining inputs and click "Calculate Dose".
+To run this application, run the App or call `MVCTdose` from MATLAB. Once the application interface loads, select browse under inputs to load the [CT](../../wiki/Loading-Patient-Archives) and [structure set](../../wiki/Loading-Structure-Sets) inputs. Then enter the remaining inputs, click "Calculate Dose", and [export the results](../../wiki/Exporting-Results).
 
 ## License
 
