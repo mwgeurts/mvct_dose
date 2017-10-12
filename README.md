@@ -11,11 +11,13 @@ TomoTherapy is a registered trademark of Accuray Incorporated. MATLAB is a regis
 
 ## Installation
 
-To install the TomoTherapy MVCT Dose Calculator Tool as a MATLAB App, download and execute the `MVCT Dose Calculator.mlappinstall` file from this directory. If using git, execute `git clone --recursive https://github.com/mwgeurts/mvct_dose`. See the [wiki](../../wiki/Installation-and-Use) for information on configuration parameters, setting up the calculation server, and adding beam models.
+To install the TomoTherapy MVCT Dose Calculator Tool as a MATLAB App, download and execute the `MVCT Dose Calculator.mlappinstall` file from this directory. If using git, execute `git clone --recursive https://github.com/mwgeurts/mvct_dose`.
 
-## Usage
+## Usage and Documentation
 
 To run this application, run the App or call `MVCTdose` from MATLAB. Once the application interface loads, select browse under inputs to load the [CT](../../wiki/Loading-Patient-Archives) and [structure set](../../wiki/Loading-Structure-Sets) inputs. Then enter the remaining inputs, click "Calculate Dose", and [export the results](../../wiki/Exporting-Results).
+
+See the [wiki](../../wiki/) for information on configuration parameters, setting up the calculation server, and adding beam models.
 
 ## License
 
